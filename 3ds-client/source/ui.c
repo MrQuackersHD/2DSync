@@ -112,6 +112,7 @@ static void draw_top(AppState *app) {
     C2D_DrawRectSolid(0, 0, 0, 400, 30, COL_PANEL2);
     C2D_DrawRectSolid(0, 30, 0, 400, 2, COL_ACCENT);
     text(app, 16, 6, 0.58f, COL_TEXT, "2DSync");
+    text(app, 118, 10, 0.34f, COL_ACCENT, "v0.1.1");
     const char *status = app->online ? "Online" : "Offline";
     text(app, 300, 8, 0.40f, app->online ? COL_OK : COL_WARN, status);
 

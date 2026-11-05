@@ -14,13 +14,17 @@ static void set_default(AppConfig *cfg) {
     cfg->verify_tls = 0;
 }
 
-static void apply_line(AppConfig *cfg, const char *key, const char *value) {
+static int rejected_server(const char *value) {
+    /* Tailscale's certificate never completes a handshake on the 3DS. */
+    return strstr(value, "tail") != NULL || strncmp(value, "https://100.", 12) == 0;
+}
+
+static void apply_line(AppConfig *cfg, const char *key, const char *value, int *rewrite) {
     if (strcmp(key, "server_url") == 0) {
-        /* Replace the Tailscale addresses. Those certificates are not ones
-           the 3DS TLS stack can complete a handshake with. */
-        if (value[0] && strncmp(value, "https://100.", 12) != 0 &&
-            strncmp(value, "https://fhs-app26.tail812c67.ts.net", 36) != 0)
+        if (value[0] && !rejected_server(value))
             snprintf(cfg->server_url, sizeof(cfg->server_url), "%s", value);
+        else
+            *rewrite = 1;
     }
     else if (strcmp(key, "device_token") == 0) snprintf(cfg->device_token, sizeof(cfg->device_token), "%s", value);
     else if (strcmp(key, "device_id") == 0) snprintf(cfg->device_id, sizeof(cfg->device_id), "%s", value);
@@ -32,6 +36,7 @@ static void apply_line(AppConfig *cfg, const char *key, const char *value) {
 
 void config_load(AppConfig *cfg) {
     set_default(cfg);
+    int rewrite = 0;
     FILE *f = fopen(CONFIG_PATH, "rb");
     if (!f) {
         config_ensure_identity(cfg);
@@ -45,10 +50,11 @@ void config_load(AppConfig *cfg) {
         char *value = eq + 1;
         char *nl = strpbrk(value, "\r\n");
         if (nl) *nl = 0;
-        apply_line(cfg, line, value);
+        apply_line(cfg, line, value, &rewrite);
     }
     fclose(f);
     config_ensure_identity(cfg);
+    if (rewrite) config_save(cfg);
 }
 
 int config_save(const AppConfig *cfg) {
