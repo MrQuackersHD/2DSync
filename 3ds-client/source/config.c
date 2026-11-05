@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define CONFIG_PATH TWODSYNC_ROOT "/config.txt"
-#define DEFAULT_SERVER_URL "https://fhs-app26.tail812c67.ts.net:10000"
+#define DEFAULT_SERVER_URL "https://scores-crossword-partition-math.trycloudflare.com"
 
 static void set_default(AppConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -16,10 +16,10 @@ static void set_default(AppConfig *cfg) {
 
 static void apply_line(AppConfig *cfg, const char *key, const char *value) {
     if (strcmp(key, "server_url") == 0) {
-        /* Older builds stored the private 100.x address, or the public name
-           with no port. Port 443 on that name is not reachable from the internet. */
+        /* Replace the Tailscale addresses. Those certificates are not ones
+           the 3DS TLS stack can complete a handshake with. */
         if (value[0] && strncmp(value, "https://100.", 12) != 0 &&
-            strcmp(value, "https://fhs-app26.tail812c67.ts.net") != 0)
+            strncmp(value, "https://fhs-app26.tail812c67.ts.net", 36) != 0)
             snprintf(cfg->server_url, sizeof(cfg->server_url), "%s", value);
     }
     else if (strcmp(key, "device_token") == 0) snprintf(cfg->device_token, sizeof(cfg->device_token), "%s", value);

@@ -7,7 +7,7 @@
 - Moved the application state off the 32KB stack. That object is 88KB and was crashing on the first call.
 - Stopped treating the system font as missing. Citro2d returns no font handle for the console's own region, and the app was exiting with the GPU still active.
 - Game icons are copied as 8x8 tiles, touch targets match the drawn rows, and settings replace the existing SD file instead of failing on the second save. The default server is the public Tailscale name, shown in full.
-- The console now calls https://fhs-app26.tail812c67.ts.net:10000, which is the public port that answers. Port 443 on that name is not open from the internet.
+- The console now calls a Cloudflare tunnel that offers RSA AES128-SHA, which is the TLS the 3DS can finish. The Tailscale certificate could not.
 - First 3DS homebrew client for listing supported titles, copying save archives, and keeping local backups.
 - Pairing with short-lived single-use sync codes, per-console tokens, recovery codes, and device revocation.
 - FastAPI server with checksum-verified chunked uploads, version history, quotas, and PostgreSQL or SQLite.
