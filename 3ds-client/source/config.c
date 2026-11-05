@@ -5,15 +5,19 @@
 #include <string.h>
 
 #define CONFIG_PATH TWODSYNC_ROOT "/config.txt"
+#define DEFAULT_SERVER_URL "https://100.109.119.112"
 
 static void set_default(AppConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
+    snprintf(cfg->server_url, sizeof(cfg->server_url), "%s", DEFAULT_SERVER_URL);
     snprintf(cfg->console_name, sizeof(cfg->console_name), "Nintendo 3DS");
     cfg->verify_tls = 0;
 }
 
 static void apply_line(AppConfig *cfg, const char *key, const char *value) {
-    if (strcmp(key, "server_url") == 0) snprintf(cfg->server_url, sizeof(cfg->server_url), "%s", value);
+    if (strcmp(key, "server_url") == 0) {
+        if (value[0]) snprintf(cfg->server_url, sizeof(cfg->server_url), "%s", value);
+    }
     else if (strcmp(key, "device_token") == 0) snprintf(cfg->device_token, sizeof(cfg->device_token), "%s", value);
     else if (strcmp(key, "device_id") == 0) snprintf(cfg->device_id, sizeof(cfg->device_id), "%s", value);
     else if (strcmp(key, "account_id") == 0) snprintf(cfg->account_id, sizeof(cfg->account_id), "%s", value);

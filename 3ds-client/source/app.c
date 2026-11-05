@@ -49,7 +49,17 @@ static int confirm(AppState *app, const char *title, const char *body) {
     while (aptMainLoop()) {
         hidScanInput();
         u32 down = hidKeysDown();
-        if (down & KEY_DOWN || down & KEY_UP) app->dialog_cursor ^= 1;
+        if (down & KEY_DOWN) app->dialog_cursor ^= 1;
+        else if (down & KEY_UP) app->dialog_cursor ^= 1;
+        touchPosition touch;
+        hidTouchRead(&touch);
+        if (down & KEY_TOUCH) {
+            int row = ui_dialog_slot(touch.py, app->dialog_count);
+            if (row >= 0) {
+                choice = row;
+                break;
+            }
+        }
         if (down & KEY_A) {
             choice = app->dialog_cursor;
             break;
@@ -58,6 +68,7 @@ static int confirm(AppState *app, const char *title, const char *body) {
         ui_frame(app);
     }
     app->dialog_active = 0;
+    ui_flush_input();
     return choice == 0;
 }
 
@@ -85,8 +96,8 @@ static int conflict_dialog(AppState *app, const char *local_sha, unsigned long l
         touchPosition touch;
         hidTouchRead(&touch);
         if (down & KEY_TOUCH) {
-            int row = (touch.py - 108) / 22;
-            if (row >= 0 && row < 4) {
+            int row = ui_dialog_slot(touch.py, app->dialog_count);
+            if (row >= 0) {
                 choice = row;
                 break;
             }
@@ -99,6 +110,7 @@ static int conflict_dialog(AppState *app, const char *local_sha, unsigned long l
         ui_frame(app);
     }
     app->dialog_active = 0;
+    ui_flush_input();
     return choice;
 }
 
@@ -517,14 +529,13 @@ static void settings_action(AppState *app) {
     if (app->cursor == 0) {
         char url[160];
         snprintf(url, sizeof(url), "%s", app->cfg.server_url);
-        if (!ui_prompt("https://sync.example.com", url, sizeof(url), 0)) return;
+        if (!ui_prompt("https://100.109.119.112", url, sizeof(url), 0)) return;
         if (strncmp(url, "https://", 8) != 0) {
             toast(app, "Server address must start with https://");
             return;
         }
         snprintf(app->cfg.server_url, sizeof(app->cfg.server_url), "%s", url);
-        config_save(&app->cfg);
-        toast(app, "Server address saved");
+        toast(app, config_save(&app->cfg) == 0 ? "Server address saved" : "Could not save settings to the SD card");
     } else if (app->cursor == 1) {
         char name[32];
         snprintf(name, sizeof(name), "%s", app->cfg.console_name);
@@ -534,11 +545,13 @@ static void settings_action(AppState *app) {
             return;
         }
         snprintf(app->cfg.console_name, sizeof(app->cfg.console_name), "%s", name);
-        config_save(&app->cfg);
+        toast(app, config_save(&app->cfg) == 0 ? "Console name saved" : "Could not save settings to the SD card");
     } else if (app->cursor == 2) {
         app->cfg.verify_tls = !app->cfg.verify_tls;
-        config_save(&app->cfg);
-        toast(app, app->cfg.verify_tls ? "TLS verification on" : "TLS verification off");
+        if (config_save(&app->cfg) != 0) {
+            app->cfg.verify_tls = !app->cfg.verify_tls;
+            toast(app, "Could not save settings to the SD card");
+        } else toast(app, app->cfg.verify_tls ? "TLS verification on" : "TLS verification off");
     } else if (app->cursor == 3) {
         app->busy = 1;
         int rc = cloud_check(&app->cfg, err, sizeof(err));
@@ -550,20 +563,22 @@ static void settings_action(AppState *app) {
     }
 }
 
+static int scrolling_list(Screen screen) {
+    return screen == SCREEN_GAMES || screen == SCREEN_CLOUD || screen == SCREEN_HISTORY || screen == SCREEN_DEVICES || screen == SCREEN_PENDING;
+}
+
 static int move_cursor(AppState *app, int count, u32 down) {
     if (count <= 0) return 0;
     if (down & KEY_DOWN) app->cursor = (app->cursor + 1) % count;
-    if (down & KEY_UP) app->cursor = (app->cursor + count - 1) % count;
-    touchPosition touch;
-    hidTouchRead(&touch);
+    else if (down & KEY_UP) app->cursor = (app->cursor + count - 1) % count;
     if (down & KEY_TOUCH) {
-        int row = (int)((touch.py - 32) / 34);
-        if (app->screen == SCREEN_GAMES || app->screen == SCREEN_CLOUD || app->screen == SCREEN_HISTORY || app->screen == SCREEN_DEVICES || app->screen == SCREEN_PENDING) {
-            row = (int)((touch.py - 30) / 34);
-            if (row >= 0 && row < 5) app->cursor = app->scroll + row;
-        } else if (row >= 0 && row < count) app->cursor = row;
-        if (app->cursor >= count) app->cursor = count - 1;
-        if (app->cursor < 0) app->cursor = 0;
+        touchPosition touch;
+        hidTouchRead(&touch);
+        int slot = ui_list_slot(touch.py);
+        if (slot < 0) return 0;
+        int index = scrolling_list(app->screen) ? app->scroll + slot : slot;
+        if (index < 0 || index >= count) return 0;
+        app->cursor = index;
         return 1;
     }
     return 0;
@@ -615,7 +630,7 @@ int app_frame(AppState *app) {
         case SCREEN_DEVICES: count = app->device_count; break;
         case SCREEN_PENDING: count = app->pending_count; break;
     }
-    int touched = move_cursor(app, count > 0 ? count : 1, down);
+    int touched = count > 0 ? move_cursor(app, count, down) : 0;
     if (app->screen == SCREEN_GAMES && (down & KEY_X)) app->show_unsupported = !app->show_unsupported;
     if (down & KEY_B && app->screen != SCREEN_HOME) {
         if (app->screen == SCREEN_HISTORY) go(app, SCREEN_GAME);
@@ -662,10 +677,10 @@ int app_frame(AppState *app) {
                 load_history(app);
                 go(app, SCREEN_HISTORY);
             }
-        } else if (app->screen == SCREEN_HISTORY && (down & KEY_A)) do_restore_selected(app);
-        else if (app->screen == SCREEN_SYNC && (down & KEY_A)) sync_action(app);
-        else if (app->screen == SCREEN_SETTINGS && (down & KEY_A)) settings_action(app);
-        else if (app->screen == SCREEN_PENDING && (down & KEY_A) && app->pending_count > 0) {
+        } else if (app->screen == SCREEN_HISTORY && ((down & KEY_A) || touched)) do_restore_selected(app);
+        else if (app->screen == SCREEN_SYNC && ((down & KEY_A) || touched)) sync_action(app);
+        else if (app->screen == SCREEN_SETTINGS && ((down & KEY_A) || touched)) settings_action(app);
+        else if (app->screen == SCREEN_PENDING && ((down & KEY_A) || touched) && app->pending_count > 0) {
             char err[160];
             if (!confirm(app, "Pair Console", app->pending[app->cursor].name)) {
                 toast(app, "Cancelled");
@@ -676,7 +691,7 @@ int app_frame(AppState *app) {
                 toast(app, rc == 0 ? "Console approved" : err);
                 go(app, SCREEN_SYNC);
             }
-        } else if (app->screen == SCREEN_DEVICES && (down & KEY_A) && app->device_count > 0) {
+        } else if (app->screen == SCREEN_DEVICES && ((down & KEY_A) || touched) && app->device_count > 0) {
             if (app->devices[app->cursor].this_console) toast(app, "Use Unpair for this console");
             else if (confirm(app, "Revoke Console", "This console will lose access.")) {
                 char err[160];

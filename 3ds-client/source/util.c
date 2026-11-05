@@ -136,6 +136,9 @@ int write_entire_file(const char *path, const void *buf, size_t len) {
         remove(tmp);
         return -1;
     }
+    /* The 3DS filesystem refuses to rename onto a file that already exists.
+       Removing it first is what lets a second save replace the first. */
+    remove(path);
     if (rename(tmp, path) != 0) {
         remove(tmp);
         return -1;

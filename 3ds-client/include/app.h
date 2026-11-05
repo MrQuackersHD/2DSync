@@ -64,3 +64,6 @@ void app_shutdown(AppState *app);
 int app_frame(AppState *app);
 void ui_frame(AppState *app);
 int ui_prompt(const char *hint, char *out, size_t out_len, int digits);
+int ui_list_slot(int py);
+int ui_dialog_slot(int py, int count);
+void ui_flush_input(void);

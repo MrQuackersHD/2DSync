@@ -1,9 +1,11 @@
 #include "conflict.h"
 #include "container.h"
+#include "icon_tiles.h"
 #include "net_policy.h"
 #include "sha256.h"
 #include "title_filter.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,12 +141,34 @@ static void test_container(void) {
     expect(rc != 0, "reject empty save");
 }
 
+static void test_icons(void) {
+    uint16_t src[6 * 6 * 64];
+    uint16_t dst[64 * 64];
+    for (int ty = 0; ty < 6; ty++) {
+        for (int tx = 0; tx < 6; tx++) {
+            uint16_t *tile = src + (ty * 6 + tx) * 64;
+            for (int i = 0; i < 64; i++) tile[i] = (uint16_t)((ty << 8) | (tx << 4) | i);
+        }
+    }
+    icon_tiles_to_tex64(dst, src);
+    int copied = 1;
+    for (int ty = 0; ty < 6; ty++) {
+        for (int tx = 0; tx < 6; tx++) {
+            if (memcmp(dst + (ty * 8 + tx) * 64, src + (ty * 6 + tx) * 64, 64 * sizeof(uint16_t)) != 0) copied = 0;
+        }
+    }
+    expect(copied, "smdh tiles land on the matching 64px texture tiles");
+    expect(dst[(0 * 8 + 7) * 64] == 0, "right padding stays empty");
+    expect(dst[(7 * 8 + 0) * 64] == 0, "bottom padding stays empty");
+}
+
 int main(void) {
     test_sha();
     test_titles();
     test_conflict();
     test_net();
     test_container();
+    test_icons();
     if (g_failed) {
         fprintf(stderr, "%d test(s) failed\n", g_failed);
         return 1;

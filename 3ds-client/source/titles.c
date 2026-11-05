@@ -1,4 +1,5 @@
 #include "titles.h"
+#include "icon_tiles.h"
 #include "util.h"
 
 #include <stdio.h>
@@ -64,6 +65,8 @@ static void name_from_smdh(char *out, size_t out_len, const u8 *smdh, u8 languag
     snprintf(out, out_len, "Unknown title");
 }
 
+static void install_icon(TitleEntry *title, const u8 *smdh);
+
 static void read_meta(TitleEntry *title, u8 language) {
     Handle file = 0;
     Result rc = open_icon(&file, title->title_id, title->media, 8);
@@ -87,7 +90,24 @@ static void read_meta(TitleEntry *title, u8 language) {
         return;
     }
     name_from_smdh(title->name, sizeof(title->name), smdh, language);
+    if (read >= 0x36C0) install_icon(title, smdh);
     free(smdh);
+}
+
+static void install_icon(TitleEntry *title, const u8 *smdh) {
+    if (title->icon_ready) return;
+    if (!C3D_TexInit(&title->tex, 64, 64, GPU_RGB565)) return;
+    icon_tiles_to_tex64((uint16_t *)title->tex.data, (const uint16_t *)(smdh + 0x24C0));
+    C3D_TexFlush(&title->tex);
+    C3D_TexSetFilter(&title->tex, GPU_NEAREST, GPU_NEAREST);
+    C3D_TexSetWrap(&title->tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    title->sub.width = 48;
+    title->sub.height = 48;
+    title->sub.left = 0.0f;
+    title->sub.right = 48.0f / 64.0f;
+    title->sub.top = 1.0f;
+    title->sub.bottom = 1.0f - (48.0f / 64.0f);
+    title->icon_ready = 1;
 }
 
 void titles_load_icon(TitleEntry *title) {
@@ -108,40 +128,7 @@ void titles_load_icon(TitleEntry *title) {
         free(smdh);
         return;
     }
-    if (!C3D_TexInit(&title->tex, 64, 64, GPU_RGB565)) {
-        free(smdh);
-        return;
-    }
-    u16 *dst = (u16 *)title->tex.data;
-    memset(dst, 0, 64 * 64 * 2);
-    const u16 *src = (const u16 *)(smdh + 0x24C0);
-    static const u8 morton[64] = {
-        0, 1, 4, 5, 16, 17, 20, 21,
-        2, 3, 6, 7, 18, 19, 22, 23,
-        8, 9, 12, 13, 24, 25, 28, 29,
-        10, 11, 14, 15, 26, 27, 30, 31,
-        32, 33, 36, 37, 48, 49, 52, 53,
-        34, 35, 38, 39, 50, 51, 54, 55,
-        40, 41, 44, 45, 56, 57, 60, 61,
-        42, 43, 46, 47, 58, 59, 62, 63
-    };
-    for (int y = 0; y < 48; y++) {
-        for (int x = 0; x < 48; x++) {
-            u32 tile = (y / 8) * 8 + (x / 8);
-            u32 local = morton[(y & 7) * 8 + (x & 7)];
-            dst[tile * 64 + local] = src[y * 48 + x];
-        }
-    }
-    C3D_TexFlush(&title->tex);
-    C3D_TexSetFilter(&title->tex, GPU_LINEAR, GPU_LINEAR);
-    C3D_TexSetWrap(&title->tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-    title->sub.width = 48;
-    title->sub.height = 48;
-    title->sub.left = 0.0f;
-    title->sub.right = 48.0f / 64.0f;
-    title->sub.top = 1.0f;
-    title->sub.bottom = 1.0f - (48.0f / 64.0f);
-    title->icon_ready = 1;
+    install_icon(title, smdh);
     free(smdh);
 }
 
