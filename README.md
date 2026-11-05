@@ -34,7 +34,7 @@ The CIA build is the one that can open other titles' save archives. The 3DSX bui
 
 1. Scan the QR code at the top of this page with FBI, or download [2DSync.cia](https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/2DSync.cia) and install that file.
 2. Open 2DSync from the HOME Menu. Close any game before you sync it. 2DSync is the foreground application, so it is not writing into a game that is running.
-3. Settings starts with the server at `https://fhs-app26.tail812c67.ts.net`. Change that if this console should talk to a different machine. TLS checking is off until you turn it on.
+3. Settings starts with the server at `https://fhs-app26.tail812c67.ts.net:10000`. That port is the public Tailscale address. TLS checking is off until you turn it on.
 
 The QR code points at the CIA file itself: `https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/2DSync.cia`. Generate a new one only after a replacement CIA URL returns the file:
 

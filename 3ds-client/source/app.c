@@ -529,7 +529,7 @@ static void settings_action(AppState *app) {
     if (app->cursor == 0) {
         char url[160];
         snprintf(url, sizeof(url), "%s", app->cfg.server_url);
-        if (!ui_prompt("https://fhs-app26.tail812c67.ts.net", url, sizeof(url), 0)) return;
+        if (!ui_prompt("https://fhs-app26.tail812c67.ts.net:10000", url, sizeof(url), 0)) return;
         if (strncmp(url, "https://", 8) != 0) {
             toast(app, "Server address must start with https://");
             return;
