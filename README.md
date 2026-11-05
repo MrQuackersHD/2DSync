@@ -2,6 +2,21 @@
 
 Your saves. Your consoles. Anywhere.
 
+<p align="center">
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/2DSync.cia">
+    <img src="docs/2DSync-fbi.png" alt="FBI QR code. Scan to install 2DSync.cia" width="420">
+  </a>
+</p>
+
+<p align="center">
+  <strong>Scan with FBI → Remote Install → Scan QR Code</strong><br>
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/2DSync.cia"><strong>Download 2DSync.cia</strong></a>
+  ·
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/2DSync.3dsx">Download 2DSync.3dsx</a>
+  ·
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/SHA256SUMS">Checksums</a>
+</p>
+
 2DSync is a Nintendo 3DS homebrew application and a private server. It backs up save archives from games you own and copies those saves between 3DS-family consoles on custom firmware. It does not download, store, or sync game ROMs or installed title contents.
 
 Supported consoles are the Nintendo 3DS, 3DS XL, New 3DS, New 3DS XL, 2DS, and New 2DS XL, running a current custom-firmware homebrew environment.
@@ -17,18 +32,15 @@ The CIA build is the one that can open other titles' save archives. The 3DSX bui
 
 ## Install on a console
 
-1. Build or download `2DSync.cia` from a release you trust.
-2. Copy it to the SD card and install it with FBI, or scan a QR code that points at the CIA file itself.
-3. Open 2DSync from the HOME Menu. Close any game before you sync it. 2DSync is the foreground application, so it is not writing into a game that is running.
-4. In Settings, set the server to your own `https://` address. The default does not point at a developer machine.
+1. Scan the QR code at the top of this page with FBI, or download [2DSync.cia](https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/2DSync.cia) and install that file.
+2. Open 2DSync from the HOME Menu. Close any game before you sync it. 2DSync is the foreground application, so it is not writing into a game that is running.
+3. In Settings, set the server to your own `https://` address. The default does not point at a developer machine.
 
-A QR code for FBI has to contain the direct CIA URL, for example `https://github.com/you/2DSync/releases/download/v0.1.0/2DSync.cia`. Generate it only after that URL returns the file:
+The QR code points at the CIA file itself: `https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.0/2DSync.cia`. Generate a new one only after a replacement CIA URL returns the file:
 
 ```bash
 python3 scripts/generate_fbi_qr.py "https://example.com/2DSync.cia" 2DSync-fbi.png
 ```
-
-This repository does not publish a release on its own. Create the GitHub release only when you explicitly want it public. The release workflow is `.github/workflows/release.yml` and it is manual.
 
 ## Sync two consoles
 
