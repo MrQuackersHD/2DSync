@@ -577,16 +577,16 @@ int app_init(AppState *app) {
     mkdir_p(TWODSYNC_ROOT "/state");
     config_load(&app->cfg);
     config_save(&app->cfg);
-    u8 region = CFG_REGION_USA;
-    CFGU_SecureInfoGetRegion(&region);
-    app->font = C2D_FontLoadSystem((CFG_Region)region);
-    if (!app->font) app->font = C2D_FontLoadSystem(CFG_REGION_USA);
-    app->text = C2D_TextBufNew(1024);
+    /* NULL is the shared system font. C2D_FontLoadSystem returns NULL
+       whenever the requested region matches the console, which is the
+       normal case, so it cannot be used as the default font. */
+    app->font = NULL;
+    app->text = C2D_TextBufNew(4096);
     app->top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     app->bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     app->title_index = -1;
     refresh_online(app);
-    if (!app->font || !app->text || !app->top || !app->bottom) return -1;
+    if (!app->text || !app->top || !app->bottom) return -1;
     return 0;
 }
 

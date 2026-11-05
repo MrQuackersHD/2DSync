@@ -17,7 +17,7 @@
 #define COL_LINE C2D_Color32(46, 64, 88, 255)
 
 static void text(AppState *app, float x, float y, float scale, u32 color, const char *str) {
-    if (!str || !str[0]) return;
+    if (!app->text || !str || !str[0]) return;
     C2D_Text item;
     C2D_TextFontParse(&item, app->font, app->text, str);
     C2D_TextOptimize(&item);

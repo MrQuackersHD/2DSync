@@ -8,6 +8,20 @@ u32 __stacksize__ = 0x40000;
 
 static AppState app;
 
+static void services_exit(int gpu) {
+    if (gpu) {
+        C2D_Fini();
+        C3D_Fini();
+    }
+    httpcExit();
+    amExit();
+    acExit();
+    cfguExit();
+    romfsExit();
+    hidExit();
+    gfxExit();
+}
+
 int main(void) {
     osSetSpeedupEnable(true);
     gfxInitDefault();
@@ -18,18 +32,19 @@ int main(void) {
     acInit();
     amInit();
     httpcInit(0x10000);
-    C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
-    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    if (!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE)) {
+        services_exit(0);
+        return 1;
+    }
+    if (!C2D_Init(C2D_DEFAULT_MAX_OBJECTS)) {
+        C3D_Fini();
+        services_exit(0);
+        return 1;
+    }
     C2D_Prepare();
 
     if (app_init(&app) != 0) {
-        httpcExit();
-        amExit();
-        acExit();
-        cfguExit();
-        romfsExit();
-        hidExit();
-        gfxExit();
+        services_exit(1);
         return 1;
     }
 
@@ -38,14 +53,6 @@ int main(void) {
     }
 
     app_shutdown(&app);
-    C2D_Fini();
-    C3D_Fini();
-    httpcExit();
-    amExit();
-    acExit();
-    cfguExit();
-    romfsExit();
-    hidExit();
-    gfxExit();
+    services_exit(1);
     return 0;
 }
