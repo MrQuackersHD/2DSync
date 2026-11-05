@@ -19,22 +19,30 @@ Option:
 AccessControlInfo:
   DisableDebug                : false
   EnableForceDebug            : false
-  CanWriteSharedPage          : false
+  CanWriteSharedPage          : true
   CanUsePrivilegedPriority    : false
   CanUseNonAlphabetAndNumber  : true
-  PermitMainFunctionArgument  : false
-  CanShareDeviceMemory        : false
+  PermitMainFunctionArgument  : true
+  CanShareDeviceMemory        : true
   RunnableOnSleep             : false
-  SpecialMemoryArrange        : false
+  SpecialMemoryArrange        : true
   CoreVersion                 : 2
   DescVersion                 : 2
-  Priority                    : 48
+  Priority                    : 16
   AffinityMask                : 1
   IdealProcessor              : 0
-  MaxCpu                      : 0
+  MaxCpu                      : 0x9E
   HandleTableSize             : 512
+  MemoryType                  : Application
   SystemMode                  : 64MB
   SystemModeExt               : Legacy
+  CpuSpeed                    : 804MHz
+  EnableL2Cache               : true
+  CanAccessCore2              : true
+  IORegisterMapping:
+   - 1ff00000-1ff7ffff
+  MemoryMapping:
+   - 1f000000-1f5fffff:r
   SystemCallAccess:
     Svc01: 0x01
     Svc02: 0x02
@@ -137,7 +145,9 @@ AccessControlInfo:
    - cfg:s
    - fs:USER
    - gsp::Gpu
+   - hid:USER
    - http:C
+   - ssl:C
    - ndm:u
    - ptm:u
    - ps:ps

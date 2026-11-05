@@ -6,6 +6,7 @@ int main(void) {
     osSetSpeedupEnable(true);
     gfxInitDefault();
     gfxSet3D(false);
+    hidInit();
     romfsInit();
     cfguInit();
     acInit();
@@ -22,6 +23,7 @@ int main(void) {
         acExit();
         cfguExit();
         romfsExit();
+        hidExit();
         gfxExit();
         return 1;
     }
@@ -38,6 +40,7 @@ int main(void) {
     acExit();
     cfguExit();
     romfsExit();
+    hidExit();
     gfxExit();
     return 0;
 }
