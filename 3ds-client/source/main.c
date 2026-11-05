@@ -2,6 +2,12 @@
 
 #include <string.h>
 
+/* libctru places this stack inside the heap. 32KB is the library default,
+   and main's state alone is larger than that. */
+u32 __stacksize__ = 0x40000;
+
+static AppState app;
+
 int main(void) {
     osSetSpeedupEnable(true);
     gfxInitDefault();
@@ -16,7 +22,6 @@ int main(void) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
 
-    AppState app;
     if (app_init(&app) != 0) {
         httpcExit();
         amExit();

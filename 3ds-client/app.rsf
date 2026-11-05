@@ -4,7 +4,7 @@ BasicInfo:
   Logo                    : Homebrew
 
 SystemControlInfo:
-  StackSize                   : 0x8000
+  StackSize                   : 0x40000
 
 TitleInfo:
   UniqueId                : 0x2d59c
