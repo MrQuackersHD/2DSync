@@ -17,7 +17,7 @@ INCLUDES        := include ../common
 ROMFS           := romfs
 APP_TITLE       := 2DSync
 APP_DESCRIPTION := Your saves. Your consoles. Anywhere.
-APP_AUTHOR      := 2DSync Contributors
+APP_AUTHOR      := 2DSync
 ICON            := icon.png
 
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
