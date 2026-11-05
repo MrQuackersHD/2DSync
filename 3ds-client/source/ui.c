@@ -148,8 +148,7 @@ static void draw_top(AppState *app) {
         text(app, 28, 146, 0.38f, COL_MUTED, "Open a game to check the cloud copy");
     }
     if (config_has_server(&app->cfg)) {
-        trim_copy(line, sizeof(line), app->cfg.server_url, 40);
-        text(app, 28, 176, 0.34f, COL_MUTED, line);
+        text(app, 28, 184, 0.40f, COL_TEXT, app->cfg.server_url);
     }
     if (app->toast_frames > 0) {
         C2D_DrawRectSolid(16, 208, 0, 368, 24, COL_PANEL2);
@@ -269,13 +268,31 @@ static void draw_sync(AppState *app) {
     }
 }
 
+static void server_host(const char *url, char *out, size_t n) {
+    const char *p = url ? url : "";
+    if (strncmp(p, "https://", 8) == 0) p += 8;
+    snprintf(out, n, "%s", p);
+}
+
 static void draw_settings(AppState *app) {
     const char *labels[] = {"Server", "Console Name", "TLS Check", "Test Connection", "Rescan Games"};
-    char server[40], name[20];
-    trim_copy(server, sizeof(server), app->cfg.server_url, 18);
-    trim_copy(name, sizeof(name), app->cfg.console_name, 12);
-    const char *values[] = {server, name, app->cfg.verify_tls ? "On" : "Off", "", ""};
-    draw_menu(app, "Settings", labels, values, 5, "A  change      B  back");
+    char host[96], name[24];
+    server_host(app->cfg.server_url, host, sizeof(host));
+    trim_copy(name, sizeof(name), app->cfg.console_name, 14);
+    heading(app, "Settings", NULL);
+    for (int i = 0; i < 5; i++) {
+        float y = row_y(i);
+        row(y, app->cursor == i);
+        if (i == 0) {
+            text(app, 26, y + 2, 0.34f, COL_MUTED, "Server");
+            text(app, 26, y + 16, 0.32f, COL_TEXT, host);
+        } else {
+            text(app, 26, y + 8, 0.44f, app->cursor == i ? COL_TEXT : COL_MUTED, labels[i]);
+            const char *value = i == 1 ? name : (i == 2 ? (app->cfg.verify_tls ? "On" : "Off") : "");
+            if (value[0]) text(app, 188, y + 10, 0.36f, COL_ACCENT, value);
+        }
+    }
+    hint(app, "A  change      B  back");
 }
 
 static void draw_dialog(AppState *app) {
@@ -353,6 +370,9 @@ int ui_prompt(const char *hint, char *out, size_t out_len, int digits) {
     int initial_len = (int)strlen(initial);
     if (max_len < initial_len) max_len = initial_len;
     swkbdInit(&kbd, digits ? SWKBD_TYPE_WESTERN : SWKBD_TYPE_NORMAL, 2, max_len);
+    swkbdSetPasswordMode(&kbd, SWKBD_PASSWORD_NONE);
+    swkbdSetValidation(&kbd, SWKBD_ANYTHING, 0, 0);
+    swkbdSetFeatures(&kbd, SWKBD_DEFAULT_QWERTY);
     swkbdSetHintText(&kbd, hint);
     swkbdSetInitialText(&kbd, initial);
     swkbdSetButton(&kbd, SWKBD_BUTTON_LEFT, "Cancel", false);

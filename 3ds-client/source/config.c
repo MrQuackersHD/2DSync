@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define CONFIG_PATH TWODSYNC_ROOT "/config.txt"
-#define DEFAULT_SERVER_URL "https://100.109.119.112"
+#define DEFAULT_SERVER_URL "https://fhs-app26.tail812c67.ts.net"
 
 static void set_default(AppConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -16,7 +16,9 @@ static void set_default(AppConfig *cfg) {
 
 static void apply_line(AppConfig *cfg, const char *key, const char *value) {
     if (strcmp(key, "server_url") == 0) {
-        if (value[0]) snprintf(cfg->server_url, sizeof(cfg->server_url), "%s", value);
+        /* 100.x is a Tailscale address, not a public one. Replace the old default. */
+        if (value[0] && strncmp(value, "https://100.", 12) != 0)
+            snprintf(cfg->server_url, sizeof(cfg->server_url), "%s", value);
     }
     else if (strcmp(key, "device_token") == 0) snprintf(cfg->device_token, sizeof(cfg->device_token), "%s", value);
     else if (strcmp(key, "device_id") == 0) snprintf(cfg->device_id, sizeof(cfg->device_id), "%s", value);
