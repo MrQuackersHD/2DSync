@@ -1,0 +1,144 @@
+BasicInfo:
+  Title                   : 2DSync
+  ProductCode             : CTR-H-2DSY
+  Logo                    : Homebrew
+
+SystemControlInfo:
+  StackSize                   : 0x8000
+
+TitleInfo:
+  UniqueId                : 0x2d59c
+  Category                : Application
+
+Option:
+  UseOnSD                 : true
+  EnableCompress          : true
+  FreeProductCode         : true
+  MediaFootPadding        : true
+
+AccessControlInfo:
+  DisableDebug                : false
+  EnableForceDebug            : false
+  CanWriteSharedPage          : false
+  CanUsePrivilegedPriority    : false
+  CanUseNonAlphabetAndNumber  : true
+  PermitMainFunctionArgument  : false
+  CanShareDeviceMemory        : false
+  RunnableOnSleep             : false
+  SpecialMemoryArrange        : false
+  CoreVersion                 : 2
+  DescVersion                 : 2
+  Priority                    : 48
+  AffinityMask                : 1
+  IdealProcessor              : 0
+  MaxCpu                      : 0
+  HandleTableSize             : 512
+  SystemMode                  : 64MB
+  SystemModeExt               : Legacy
+  SystemCallAccess:
+    Svc01: 0x01
+    Svc02: 0x02
+    Svc03: 0x03
+    Svc04: 0x04
+    Svc05: 0x05
+    Svc06: 0x06
+    Svc07: 0x07
+    Svc08: 0x08
+    Svc09: 0x09
+    Svc0A: 0x0A
+    Svc0B: 0x0B
+    Svc0C: 0x0C
+    Svc0D: 0x0D
+    Svc0E: 0x0E
+    Svc0F: 0x0F
+    Svc10: 0x10
+    Svc11: 0x11
+    Svc12: 0x12
+    Svc13: 0x13
+    Svc14: 0x14
+    Svc15: 0x15
+    Svc16: 0x16
+    Svc17: 0x17
+    Svc18: 0x18
+    Svc19: 0x19
+    Svc1A: 0x1A
+    Svc1B: 0x1B
+    Svc1C: 0x1C
+    Svc1D: 0x1D
+    Svc1E: 0x1E
+    Svc1F: 0x1F
+    Svc20: 0x20
+    Svc21: 0x21
+    Svc22: 0x22
+    Svc23: 0x23
+    Svc24: 0x24
+    Svc25: 0x25
+    Svc26: 0x26
+    Svc27: 0x27
+    Svc28: 0x28
+    Svc29: 0x29
+    Svc2A: 0x2A
+    Svc2B: 0x2B
+    Svc2C: 0x2C
+    Svc2D: 0x2D
+    Svc2E: 0x2E
+    Svc2F: 0x2F
+    Svc30: 0x30
+    Svc31: 0x31
+    Svc32: 0x32
+    Svc33: 0x33
+    Svc34: 0x34
+    Svc35: 0x35
+    Svc36: 0x36
+    Svc37: 0x37
+    Svc38: 0x38
+    Svc39: 0x39
+    Svc3A: 0x3A
+    Svc3B: 0x3B
+    Svc3C: 0x3C
+    Svc3D: 0x3D
+    Svc3E: 0x3E
+  FileSystemAccess:
+   - CategorySystemApplication
+   - CategoryHardwareCheck
+   - CategoryFileSystemTool
+   - Debug
+   - TwlCardBackup
+   - TwlNandData
+   - Boss
+   - DirectSdmc
+   - Core
+   - CtrNandRo
+   - CtrNandRw
+   - CtrNandRoWrite
+   - CategorySystemSettings
+   - CardBoard
+   - ExportImportIvs
+   - SwitchCleanup
+   - SaveDataMove
+   - Shop
+   - Shell
+   - CategoryHomeMenu
+   - SeedDB
+  IoAccessControl:
+   - FsMountNand
+   - FsMountNandRoWrite
+   - FsMountTwln
+   - FsMountWnand
+   - FsMountCardSpi
+   - UseSdif3
+   - CreateSeed
+   - UseCardSpi
+  ServiceAccessControl:
+   - APT:U
+   - ac:u
+   - am:u
+   - cfg:u
+   - cfg:s
+   - fs:USER
+   - gsp::Gpu
+   - http:C
+   - ndm:u
+   - ptm:u
+   - ps:ps
+   - soc:U

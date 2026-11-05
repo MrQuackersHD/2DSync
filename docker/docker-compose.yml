@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: 2dsync
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: 2dsync
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U 2dsync"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ../server
+    environment:
+      DATABASE_URL: postgresql+psycopg://2dsync:${POSTGRES_PASSWORD}@db:5432/2dsync
+      SAVE_STORAGE_DIR: /data/saves
+      TOKEN_PEPPER: ${TOKEN_PEPPER:?set TOKEN_PEPPER}
+      PAIRING_TTL_SECONDS: ${PAIRING_TTL_SECONDS:-600}
+      MAX_FAILED_ATTEMPTS: ${MAX_FAILED_ATTEMPTS:-5}
+      LOCKOUT_SECONDS: ${LOCKOUT_SECONDS:-900}
+      QUOTA_BYTES: ${QUOTA_BYTES:-268435456}
+      MAX_SAVE_BYTES: ${MAX_SAVE_BYTES:-33554432}
+      RETENTION_VERSIONS: ${RETENTION_VERSIONS:-10}
+    volumes:
+      - saves:/data/saves
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "443:443"
+      - "80:80"
+    environment:
+      DOMAIN: ${DOMAIN:-sync.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  saves:
+  caddy-data:
+  caddy-config:

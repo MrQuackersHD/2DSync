@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+data/
+server/data/
+*.2dsv
+.DS_Store
+tests/host/test_host

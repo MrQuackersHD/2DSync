@@ -1,0 +1,4 @@
+{$DOMAIN:sync.example.com} {
+	encode gzip
+	reverse_proxy api:8000
+}
