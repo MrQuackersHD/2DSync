@@ -4,15 +4,16 @@
 #include <stdio.h>
 #include <string.h>
 
-#define COL_BG C2D_Color32(10, 14, 22, 255)
-#define COL_PANEL C2D_Color32(22, 30, 46, 255)
-#define COL_PANEL2 C2D_Color32(16, 22, 34, 255)
-#define COL_ACCENT C2D_Color32(72, 196, 255, 255)
-#define COL_TEXT C2D_Color32(244, 247, 252, 255)
-#define COL_MUTED C2D_Color32(148, 164, 186, 255)
-#define COL_OK C2D_Color32(72, 214, 154, 255)
-#define COL_WARN C2D_Color32(255, 196, 92, 255)
-#define COL_SELECTED C2D_Color32(28, 58, 88, 255)
+#define COL_BG C2D_Color32(8, 12, 20, 255)
+#define COL_PANEL C2D_Color32(24, 33, 51, 255)
+#define COL_PANEL2 C2D_Color32(15, 21, 34, 255)
+#define COL_ACCENT C2D_Color32(86, 196, 255, 255)
+#define COL_TEXT C2D_Color32(246, 248, 252, 255)
+#define COL_MUTED C2D_Color32(154, 170, 192, 255)
+#define COL_OK C2D_Color32(78, 214, 156, 255)
+#define COL_WARN C2D_Color32(255, 186, 84, 255)
+#define COL_SELECTED C2D_Color32(22, 62, 98, 255)
+#define COL_SCRIM C2D_Color32(0, 0, 0, 170)
 
 #define LIST_Y 30
 #define ROW_H 34
@@ -67,16 +68,20 @@ void ui_flush_input(void) {
 
 static void row(float y, int selected) {
     C2D_DrawRectSolid(ROW_X, y, 0.0f, ROW_W, ROW_H, selected ? COL_SELECTED : COL_PANEL);
-    C2D_DrawRectSolid(ROW_X, y, 0.0f, 3, ROW_H, selected ? COL_ACCENT : C2D_Color32(38, 52, 72, 255));
+    C2D_DrawRectSolid(ROW_X, y, 0.0f, selected ? 4.0f : 2.0f, ROW_H, selected ? COL_ACCENT : C2D_Color32(46, 64, 90, 255));
 }
 
 static void heading(AppState *app, const char *title, const char *aside) {
-    text(app, 14, 4, 0.50f, COL_TEXT, title);
-    if (aside && aside[0]) text(app, 188, 8, 0.34f, COL_MUTED, aside);
+    C2D_DrawRectSolid(0, 0, 0, 320, 28, COL_PANEL2);
+    C2D_DrawRectSolid(0, 28, 0, 320, 2, COL_ACCENT);
+    text(app, 14, 5, 0.48f, COL_TEXT, title);
+    if (aside && aside[0]) text(app, 168, 8, 0.32f, COL_MUTED, aside);
 }
 
 static void hint(AppState *app, const char *str) {
-    text(app, 14, 222, 0.32f, COL_MUTED, str);
+    int code = str && strncmp(str, "Code", 4) == 0;
+    C2D_DrawRectSolid(0, 216, 0, 320, 24, COL_PANEL2);
+    text(app, 14, 220, 0.32f, code ? COL_ACCENT : COL_MUTED, str);
 }
 
 static TitleEntry *selected_title(AppState *app) {
@@ -103,8 +108,9 @@ static int visible_count(const AppState *app) {
 }
 
 static void draw_icon(TitleEntry *title, float x, float y, float scale) {
+    float side = 48.0f * scale;
+    C2D_DrawRectSolid(x - 2, y - 2, 0, side + 4, side + 4, C2D_Color32(46, 64, 90, 255));
     if (!title || !title->icon_ready) {
-        float side = 48.0f * scale;
         C2D_DrawRectSolid(x, y, 0, side, side, COL_PANEL2);
         return;
     }
@@ -112,53 +118,58 @@ static void draw_icon(TitleEntry *title, float x, float y, float scale) {
     C2D_DrawImageAt(img, x, y, 0.0f, NULL, scale, scale);
 }
 
+static void badge(float x, float y, float w, u32 color, AppState *app, const char *label) {
+    C2D_DrawRectSolid(x, y, 0, w, 16, color);
+    text(app, x + 6, y + 1, 0.30f, COL_BG, label);
+}
+
 static void draw_top(AppState *app) {
-    C2D_DrawRectSolid(0, 0, 0, 400, 30, COL_PANEL2);
-    C2D_DrawRectSolid(0, 30, 0, 400, 2, COL_ACCENT);
-    text(app, 16, 6, 0.58f, COL_TEXT, "2DSync");
-    text(app, 118, 10, 0.34f, COL_ACCENT, "v0.1.2");
+    C2D_DrawRectSolid(0, 0, 0, 400, 34, COL_PANEL2);
+    C2D_DrawRectSolid(0, 34, 0, 400, 2, COL_ACCENT);
+    text(app, 16, 6, 0.56f, COL_TEXT, "2DSync");
+    text(app, 122, 10, 0.32f, COL_ACCENT, "v0.1.3");
     const char *status = app->online ? "Online" : "Offline";
-    text(app, 300, 8, 0.40f, app->online ? COL_OK : COL_WARN, status);
+    badge(app->online ? 318 : 312, 9, app->online ? 66 : 72, app->online ? COL_OK : COL_WARN, app, status);
 
     TitleEntry *title = selected_title(app);
-    draw_icon(title, 18, 48, 1.0f);
     char line[96];
     if (title) {
-        trim_copy(line, sizeof(line), title->name, 26);
-        text(app, 78, 48, 0.52f, COL_TEXT, line);
+        draw_icon(title, 16, 48, 1.0f);
+        trim_copy(line, sizeof(line), title->name, 28);
+        text(app, 78, 46, 0.50f, COL_TEXT, line);
         char id[20];
         format_title_id(id, title->title_id);
         snprintf(line, sizeof(line), "%s   %s", id, media_label(title->media));
-        text(app, 78, 70, 0.38f, COL_MUTED, line);
-        text(app, 78, 88, 0.38f, title->has_save ? COL_OK : COL_WARN, title->has_save ? "Save archive on this console" : title->note);
+        text(app, 78, 68, 0.34f, COL_MUTED, line);
+        badge(78, 90, title->has_save ? 92 : 118, title->has_save ? COL_OK : COL_WARN, app,
+              title->has_save ? "Save on console" : "No save archive");
     } else {
-        text(app, 78, 56, 0.52f, COL_TEXT, "Your saves. Your consoles.");
-        text(app, 78, 80, 0.40f, COL_MUTED, "Anywhere.");
+        text(app, 16, 52, 0.52f, COL_TEXT, "Your saves. Your consoles.");
+        text(app, 16, 78, 0.40f, COL_MUTED, "Anywhere.");
     }
 
-    C2D_DrawRectSolid(16, 114, 0, 368, 86, COL_PANEL);
-    const char *pair = config_has_token(&app->cfg) ? "Paired" : "Not paired";
-    snprintf(line, sizeof(line), "Cloud    %s", pair);
-    text(app, 28, 124, 0.42f, COL_TEXT, line);
+    C2D_DrawRectSolid(12, 120, 0, 376, 90, COL_PANEL);
+    C2D_DrawRectSolid(12, 120, 0, 4, 90, config_has_token(&app->cfg) ? COL_OK : COL_WARN);
+    text(app, 26, 128, 0.36f, COL_MUTED, "Cloud");
+    text(app, 78, 126, 0.42f, COL_TEXT, config_has_token(&app->cfg) ? "Paired" : "Not paired");
     if (app->cloud_checked && app->cloud.found) {
-        snprintf(line, sizeof(line), "Latest cloud save   %s", app->cloud.created_at);
-        text(app, 28, 146, 0.38f, COL_MUTED, line);
         char bytes[32];
         format_bytes(bytes, sizeof(bytes), app->cloud.bytes);
-        snprintf(line, sizeof(line), "Size %s", bytes);
-        text(app, 28, 166, 0.38f, COL_MUTED, line);
+        snprintf(line, sizeof(line), "%s   %s", app->cloud.created_at, bytes);
+        text(app, 26, 150, 0.34f, COL_TEXT, line);
     } else if (app->cloud_checked) {
-        text(app, 28, 146, 0.38f, COL_MUTED, "No cloud save for this game");
+        text(app, 26, 150, 0.34f, COL_MUTED, "No cloud save for this game");
     } else {
-        text(app, 28, 146, 0.38f, COL_MUTED, "Open a game to check the cloud copy");
+        text(app, 26, 150, 0.34f, COL_MUTED, "Open a game to check the cloud copy");
     }
     if (config_has_server(&app->cfg)) {
-        text(app, 28, 184, 0.40f, COL_TEXT, app->cfg.server_url);
+        text(app, 26, 176, 0.32f, COL_ACCENT, app->cfg.server_url);
     }
     if (app->toast_frames > 0) {
-        C2D_DrawRectSolid(16, 208, 0, 368, 24, COL_PANEL2);
-        trim_copy(line, sizeof(line), app->toast, 48);
-        text(app, 24, 212, 0.38f, COL_TEXT, line);
+        C2D_DrawRectSolid(0, 214, 0, 400, 26, COL_PANEL2);
+        C2D_DrawRectSolid(0, 214, 0, 400, 2, COL_ACCENT);
+        trim_copy(line, sizeof(line), app->toast, 52);
+        text(app, 14, 218, 0.36f, COL_TEXT, line);
     }
 }
 
@@ -199,13 +210,14 @@ static void draw_games(AppState *app) {
         TitleEntry *title = &app->titles.items[index];
         float y = row_y(slot);
         row(y, app->cursor == vis);
-        draw_icon(title, 20, y + 5, 0.5f);
+        draw_icon(title, 20, y + 6, 0.46f);
         char name[64];
-        trim_copy(name, sizeof(name), title->name, 22);
-        text(app, 50, y + 4, 0.40f, COL_TEXT, name);
+        trim_copy(name, sizeof(name), title->name, 18);
+        text(app, 50, y + 3, 0.38f, COL_TEXT, name);
         char meta[80];
-        snprintf(meta, sizeof(meta), "%s   %s", media_label(title->media), title->has_save ? "Save" : "No save");
-        text(app, 50, y + 18, 0.32f, title_class_supported(title->kind) ? COL_MUTED : COL_WARN, meta);
+        snprintf(meta, sizeof(meta), "%s", media_label(title->media));
+        text(app, 50, y + 18, 0.30f, title_class_supported(title->kind) ? COL_MUTED : COL_WARN, meta);
+        text(app, 230, y + 10, 0.30f, title->has_save ? COL_OK : COL_WARN, title->has_save ? "Save" : "No save");
     }
     hint(app, "X  unsupported      B  back");
 }
@@ -240,7 +252,9 @@ static void draw_simple_list(AppState *app, const char *title, int count, const 
 }
 
 static void cloud_label(AppState *app, int index, char *out, size_t n) {
-    snprintf(out, n, "%s   %llu B", app->cloud_items[index].title_id, app->cloud_items[index].bytes);
+    char bytes[24];
+    format_bytes(bytes, sizeof(bytes), app->cloud_items[index].bytes);
+    snprintf(out, n, "%s   %s", app->cloud_items[index].title_id, bytes);
 }
 
 static void hist_label(AppState *app, int index, char *out, size_t n) {
@@ -300,35 +314,65 @@ static void draw_settings(AppState *app) {
     hint(app, "A  change      B  back");
 }
 
+static void draw_wrapped(AppState *app, float x, float y, float z, const char *str) {
+    char line[48];
+    int len = 0;
+    int row = 0;
+    const char *p = str ? str : "";
+    while (*p && row < 2) {
+        while (*p == ' ') p++;
+        const char *start = p;
+        const char *break_at = p;
+        while (*p && (p - start) < 42) {
+            if (*p == ' ') break_at = p;
+            p++;
+        }
+        if (*p && break_at > start) p = break_at;
+        len = (int)(p - start);
+        if (len > 46) len = 46;
+        if (len < 0) len = 0;
+        memcpy(line, start, (size_t)len);
+        line[len] = 0;
+        text_at(app, x, y + row * 16.0f, z, 0.32f, COL_TEXT, line);
+        row++;
+    }
+}
+
 static void draw_dialog(AppState *app) {
-    C2D_DrawRectSolid(14, 28, 0.2f, 292, 184, C2D_Color32(8, 12, 20, 245));
-    C2D_DrawRectSolid(14, 28, 0.2f, 292, 2, COL_ACCENT);
-    text_at(app, 26, 36, 0.6f, 0.46f, COL_WARN, app->dialog_title);
-    text_at(app, 26, 62, 0.6f, 0.34f, COL_TEXT, app->dialog_body);
+    C2D_DrawRectSolid(0, 0, 0.15f, 320, 240, COL_SCRIM);
+    C2D_DrawRectSolid(10, 24, 0.2f, 300, 192, COL_PANEL2);
+    C2D_DrawRectSolid(10, 24, 0.2f, 300, 3, COL_ACCENT);
+    text_at(app, 22, 34, 0.6f, 0.44f, COL_TEXT, app->dialog_title);
+    draw_wrapped(app, 22, 58, 0.6f, app->dialog_body);
     for (int i = 0; i < app->dialog_count; i++) {
         float y = (float)(DLG_Y + i * DLG_STRIDE);
         int selected = app->dialog_cursor == i;
-        C2D_DrawRectSolid(26, y, 0.3f, 268, DLG_H, selected ? COL_SELECTED : COL_PANEL);
-        text_at(app, 36, y + 4, 0.6f, 0.38f, selected ? COL_ACCENT : COL_MUTED, app->dialog_buttons[i]);
+        C2D_DrawRectSolid(22, y, 0.3f, 276, DLG_H, selected ? COL_SELECTED : COL_PANEL);
+        if (selected) C2D_DrawRectSolid(22, y, 0.3f, 4, DLG_H, COL_ACCENT);
+        text_at(app, 34, y + 4, 0.6f, 0.36f, selected ? COL_TEXT : COL_MUTED, app->dialog_buttons[i]);
     }
 }
 
 static void draw_busy(AppState *app) {
-    C2D_DrawRectSolid(24, 88, 0.4f, 272, 68, COL_PANEL);
-    text_at(app, 36, 98, 0.6f, 0.40f, COL_TEXT, app->busy_text);
-    C2D_DrawRectSolid(36, 126, 0.4f, 248, 8, COL_PANEL2);
+    C2D_DrawRectSolid(0, 0, 0.15f, 320, 240, COL_SCRIM);
+    C2D_DrawRectSolid(20, 84, 0.4f, 280, 74, COL_PANEL2);
+    C2D_DrawRectSolid(20, 84, 0.4f, 280, 3, COL_ACCENT);
+    text_at(app, 32, 96, 0.6f, 0.40f, COL_TEXT, app->busy_text);
+    C2D_DrawRectSolid(32, 128, 0.5f, 256, 10, COL_PANEL);
     int pct = app->busy_pct;
     if (pct < 0) pct = 30;
     if (pct > 100) pct = 100;
-    C2D_DrawRectSolid(36, 126, 0.4f, 248.0f * (pct / 100.0f), 8, COL_ACCENT);
+    C2D_DrawRectSolid(32, 128, 0.5f, 256.0f * (pct / 100.0f), 10, COL_ACCENT);
 }
 
 static void draw_recovery(AppState *app) {
-    C2D_DrawRectSolid(16, 48, 0.2f, 288, 120, COL_PANEL);
-    text_at(app, 28, 58, 0.6f, 0.42f, COL_WARN, "Write this down");
-    text_at(app, 28, 82, 0.6f, 0.50f, COL_ACCENT, app->recovery_shown);
-    text_at(app, 28, 116, 0.6f, 0.36f, COL_TEXT, "Shown once. A stores it.");
-    text_at(app, 28, 136, 0.6f, 0.36f, COL_MUTED, "This is not your sync code.");
+    C2D_DrawRectSolid(0, 0, 0.15f, 320, 240, COL_SCRIM);
+    C2D_DrawRectSolid(16, 44, 0.2f, 288, 132, COL_PANEL2);
+    C2D_DrawRectSolid(16, 44, 0.2f, 288, 3, COL_WARN);
+    text_at(app, 28, 56, 0.6f, 0.40f, COL_WARN, "Write this down");
+    text_at(app, 28, 82, 0.6f, 0.52f, COL_ACCENT, app->recovery_shown);
+    text_at(app, 28, 118, 0.6f, 0.34f, COL_TEXT, "Shown once. A stores it.");
+    text_at(app, 28, 140, 0.6f, 0.34f, COL_MUTED, "This is not your sync code.");
 }
 
 void ui_frame(AppState *app) {
