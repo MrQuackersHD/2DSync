@@ -3,18 +3,18 @@
 Your saves. Your consoles. Anywhere.
 
 <p align="center">
-  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.2/2DSync.cia">
-    <img src="docs/2DSync-v0.1.2-fbi.png?v=0.1.2" alt="FBI QR code for 2DSync v0.1.2" width="420">
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.3/2DSync.cia">
+    <img src="docs/2DSync-v0.1.3-fbi.png?v=0.1.3" alt="FBI QR code for 2DSync v0.1.3" width="420">
   </a>
 </p>
 
 <p align="center">
   <strong>Scan with FBI → Remote Install → Scan QR Code</strong><br>
-  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.2/2DSync.cia"><strong>Download 2DSync.cia</strong></a>
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.3/2DSync.cia"><strong>Download 2DSync.cia</strong></a>
   ·
-  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.2/2DSync.3dsx">Download 2DSync.3dsx</a>
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.3/2DSync.3dsx">Download 2DSync.3dsx</a>
   ·
-  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.2/SHA256SUMS">Checksums</a>
+  <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.3/SHA256SUMS">Checksums</a>
 </p>
 
 2DSync is a Nintendo 3DS homebrew application and a private server. It backs up save archives from games you own and copies those saves between 3DS-family consoles on custom firmware. It does not download, store, or sync game ROMs or installed title contents.
@@ -32,11 +32,11 @@ The CIA build is the one that can open other titles' save archives. The 3DSX bui
 
 ## Install on a console
 
-1. Scan the QR code at the top of this page with FBI, or download [2DSync.cia](https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.2/2DSync.cia) and install that file.
+1. Scan the QR code at the top of this page with FBI, or download [2DSync.cia](https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.3/2DSync.cia) and install that file.
 2. Open 2DSync from the HOME Menu. Close any game before you sync it. 2DSync is the foreground application, so it is not writing into a game that is running.
 3. Settings starts with the server at `https://scores-crossword-partition-math.trycloudflare.com`. That address speaks the older TLS the 3DS can finish. TLS checking is off until you turn it on.
 
-The QR code points at the CIA file itself: `https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.2/2DSync.cia`. Generate a new one only after a replacement CIA URL returns the file:
+The QR code points at the CIA file itself: `https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.3/2DSync.cia`. Generate a new one only after a replacement CIA URL returns the file:
 
 ```bash
 python3 scripts/generate_fbi_qr.py "https://example.com/2DSync.cia" 2DSync-fbi.png
