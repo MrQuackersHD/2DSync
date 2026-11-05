@@ -4,7 +4,7 @@ Your saves. Your consoles. Anywhere.
 
 <p align="center">
   <a href="https://github.com/MrQuackersHD/2DSync/releases/download/v0.1.1/2DSync.cia">
-    <img src="docs/2DSync-fbi.png" alt="FBI QR code. Scan to install 2DSync.cia" width="420">
+    <img src="docs/2DSync-v0.1.1-fbi.png?v=0.1.1" alt="FBI QR code for 2DSync v0.1.1" width="420">
   </a>
 </p>
 
