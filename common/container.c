@@ -318,6 +318,7 @@ int container_pack_dir(const char *dir, const char *out_path, uint64_t title_id,
         set_err(err, err_len, "Could not hash container");
         return -1;
     }
+    remove(out_path);
     if (rename(tmp, out_path) != 0) {
         remove(tmp);
         set_err(err, err_len, "Could not store container");

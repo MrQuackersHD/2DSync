@@ -230,6 +230,7 @@ int http_download(const char *url, const char *token, const char *path, int veri
     fflush(out);
     fclose(out);
     httpcCloseContext(&ctx);
+    remove(path);
     if (rename(tmp, path) != 0) {
         remove(tmp);
         return -1;

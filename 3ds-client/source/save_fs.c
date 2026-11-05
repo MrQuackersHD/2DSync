@@ -70,6 +70,9 @@ static int copy_out_file(FS_Archive archive, const char *archive_path, const cha
     fflush(out);
     fclose(out);
     FSFILE_Close(file);
+    /* A second backup or upload copies onto files the first one already
+       wrote. The 3DS refuses to rename onto an existing file. */
+    remove(dest);
     if (rename(tmp, dest) != 0) {
         remove(tmp);
         return -1;

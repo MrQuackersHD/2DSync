@@ -9,6 +9,7 @@
 - Game icons are copied as 8x8 tiles, touch targets match the drawn rows, and settings replace the existing SD file instead of failing on the second save. The default server is the public Tailscale name, shown in full.
 - The console now calls a Cloudflare tunnel that offers RSA AES128-SHA, which is the TLS the 3DS can finish. The Tailscale certificate could not.
 - v0.1.1 is a new download. A Tailscale address saved on the SD card is replaced, and the top screen shows v0.1.1.
+- v0.1.2 can upload and download after a local backup. The 3DS would not replace the copied save file. Dialog choices are labeled.
 - First 3DS homebrew client for listing supported titles, copying save archives, and keeping local backups.
 - Pairing with short-lived single-use sync codes, per-console tokens, recovery codes, and device revocation.
 - FastAPI server with checksum-verified chunked uploads, version history, quotas, and PostgreSQL or SQLite.

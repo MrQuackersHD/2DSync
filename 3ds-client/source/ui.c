@@ -25,12 +25,16 @@
 #define DLG_H 24
 #define DLG_STRIDE 26
 
-static void text(AppState *app, float x, float y, float scale, u32 color, const char *str) {
+static void text_at(AppState *app, float x, float y, float z, float scale, u32 color, const char *str) {
     if (!app->text || !str || !str[0]) return;
     C2D_Text item;
     C2D_TextFontParse(&item, app->font, app->text, str);
     C2D_TextOptimize(&item);
-    C2D_DrawText(&item, C2D_WithColor, x, y, 0.0f, scale, scale, color);
+    C2D_DrawText(&item, C2D_WithColor, x, y, z, scale, scale, color);
+}
+
+static void text(AppState *app, float x, float y, float scale, u32 color, const char *str) {
+    text_at(app, x, y, 0.0f, scale, color, str);
 }
 
 static float row_y(int slot) {
@@ -112,7 +116,7 @@ static void draw_top(AppState *app) {
     C2D_DrawRectSolid(0, 0, 0, 400, 30, COL_PANEL2);
     C2D_DrawRectSolid(0, 30, 0, 400, 2, COL_ACCENT);
     text(app, 16, 6, 0.58f, COL_TEXT, "2DSync");
-    text(app, 118, 10, 0.34f, COL_ACCENT, "v0.1.1");
+    text(app, 118, 10, 0.34f, COL_ACCENT, "v0.1.2");
     const char *status = app->online ? "Online" : "Offline";
     text(app, 300, 8, 0.40f, app->online ? COL_OK : COL_WARN, status);
 
@@ -299,19 +303,19 @@ static void draw_settings(AppState *app) {
 static void draw_dialog(AppState *app) {
     C2D_DrawRectSolid(14, 28, 0.2f, 292, 184, C2D_Color32(8, 12, 20, 245));
     C2D_DrawRectSolid(14, 28, 0.2f, 292, 2, COL_ACCENT);
-    text(app, 26, 36, 0.46f, COL_WARN, app->dialog_title);
-    text(app, 26, 62, 0.34f, COL_TEXT, app->dialog_body);
+    text_at(app, 26, 36, 0.6f, 0.46f, COL_WARN, app->dialog_title);
+    text_at(app, 26, 62, 0.6f, 0.34f, COL_TEXT, app->dialog_body);
     for (int i = 0; i < app->dialog_count; i++) {
         float y = (float)(DLG_Y + i * DLG_STRIDE);
         int selected = app->dialog_cursor == i;
         C2D_DrawRectSolid(26, y, 0.3f, 268, DLG_H, selected ? COL_SELECTED : COL_PANEL);
-        text(app, 36, y + 4, 0.38f, selected ? COL_ACCENT : COL_MUTED, app->dialog_buttons[i]);
+        text_at(app, 36, y + 4, 0.6f, 0.38f, selected ? COL_ACCENT : COL_MUTED, app->dialog_buttons[i]);
     }
 }
 
 static void draw_busy(AppState *app) {
     C2D_DrawRectSolid(24, 88, 0.4f, 272, 68, COL_PANEL);
-    text(app, 36, 98, 0.40f, COL_TEXT, app->busy_text);
+    text_at(app, 36, 98, 0.6f, 0.40f, COL_TEXT, app->busy_text);
     C2D_DrawRectSolid(36, 126, 0.4f, 248, 8, COL_PANEL2);
     int pct = app->busy_pct;
     if (pct < 0) pct = 30;
@@ -321,10 +325,10 @@ static void draw_busy(AppState *app) {
 
 static void draw_recovery(AppState *app) {
     C2D_DrawRectSolid(16, 48, 0.2f, 288, 120, COL_PANEL);
-    text(app, 28, 58, 0.42f, COL_WARN, "Write this down");
-    text(app, 28, 82, 0.50f, COL_ACCENT, app->recovery_shown);
-    text(app, 28, 116, 0.36f, COL_TEXT, "Shown once. A stores it.");
-    text(app, 28, 136, 0.36f, COL_MUTED, "This is not your sync code.");
+    text_at(app, 28, 58, 0.6f, 0.42f, COL_WARN, "Write this down");
+    text_at(app, 28, 82, 0.6f, 0.50f, COL_ACCENT, app->recovery_shown);
+    text_at(app, 28, 116, 0.6f, 0.36f, COL_TEXT, "Shown once. A stores it.");
+    text_at(app, 28, 136, 0.6f, 0.36f, COL_MUTED, "This is not your sync code.");
 }
 
 void ui_frame(AppState *app) {
