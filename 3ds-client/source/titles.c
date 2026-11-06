@@ -235,6 +235,8 @@ static int add_media(TitleList *list, FS_MediaType media, u8 language, void (*pr
     return 0;
 }
 
+static void scan_ds_saves(TitleList *list, void (*progress)(const char *, int));
+
 int titles_scan(TitleList *list, void (*progress)(const char *, int)) {
     titles_free_icons(list);
     memset(list, 0, sizeof(*list));
