@@ -18,8 +18,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag }}
+      - name: Install CIA packaging tools
+        run: |
+          set -eux
+          git clone --depth 1 https://github.com/diasurgical/bannertool.git /tmp/bannertool
+          make -C /tmp/bannertool -j"$(nproc)"
+          install -m 755 /tmp/bannertool/bannertool /usr/local/bin/bannertool
+          git clone --depth 1 https://github.com/3DSGuy/Project_CTR.git /tmp/project_ctr
+          make -C /tmp/project_ctr/makerom -j"$(nproc)"
+          install -m 755 /tmp/project_ctr/makerom/makerom /usr/local/bin/makerom
       - name: Build
         run: make -C 3ds-client
+      - name: Verify release binaries
+        run: test -f 3ds-client/2DSync.3dsx && test -f 3ds-client/2DSync.cia
       - name: Checksums
         run: |
           cd 3ds-client
@@ -31,7 +42,7 @@ jobs:
             3ds-client/2DSync.cia
             3ds-client/2DSync.3dsx
             3ds-client/SHA256SUMS
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   publish:
     needs: build
@@ -48,6 +59,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh release delete "${{ inputs.tag }}" -y 2>/dev/null || true
           gh release create "${{ inputs.tag }}" dist/* \
             --title "${{ inputs.tag }}" \
             --notes-file CHANGELOG.md
