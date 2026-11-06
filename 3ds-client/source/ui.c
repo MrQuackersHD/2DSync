@@ -8,8 +8,8 @@
 #define COL_PANEL C2D_Color32(24, 33, 51, 255)
 #define COL_PANEL2 C2D_Color32(15, 21, 34, 255)
 #define COL_ACCENT C2D_Color32(86, 196, 255, 255)
-#define COL_TEXT C2D_Color32(246, 248, 252, 255)
-#define COL_MUTED C2D_Color32(154, 170, 192, 255)
+#define COL_TEXT C2D_Color32(252, 254, 255, 255)
+#define COL_MUTED C2D_Color32(196, 208, 224, 255)
 #define COL_OK C2D_Color32(78, 214, 156, 255)
 #define COL_WARN C2D_Color32(255, 186, 84, 255)
 #define COL_SELECTED C2D_Color32(22, 62, 98, 255)
@@ -71,17 +71,22 @@ static void row(float y, int selected) {
     C2D_DrawRectSolid(ROW_X, y, 0.0f, selected ? 4.0f : 2.0f, ROW_H, selected ? COL_ACCENT : C2D_Color32(46, 64, 90, 255));
 }
 
+static void list_aside(AppState *app, char *out, size_t n, const char *fallback) {
+    if (app->search_query[0]) snprintf(out, n, "Find: %s", app->search_query);
+    else snprintf(out, n, "%s", fallback ? fallback : "");
+}
+
 static void heading(AppState *app, const char *title, const char *aside) {
     C2D_DrawRectSolid(0, 0, 0, 320, 28, COL_PANEL2);
     C2D_DrawRectSolid(0, 28, 0, 320, 2, COL_ACCENT);
-    text(app, 14, 5, 0.48f, COL_TEXT, title);
-    if (aside && aside[0]) text(app, 168, 8, 0.32f, COL_MUTED, aside);
+    text(app, 14, 4, 0.52f, COL_TEXT, title);
+    if (aside && aside[0]) text(app, 148, 7, 0.36f, COL_MUTED, aside);
 }
 
 static void hint(AppState *app, const char *str) {
     int code = str && strncmp(str, "Code", 4) == 0;
     C2D_DrawRectSolid(0, 216, 0, 320, 24, COL_PANEL2);
-    text(app, 14, 220, 0.32f, code ? COL_ACCENT : COL_MUTED, str);
+    text(app, 14, 219, 0.38f, code ? COL_ACCENT : COL_MUTED, str);
 }
 
 static TitleEntry *selected_title(AppState *app) {
@@ -90,21 +95,17 @@ static TitleEntry *selected_title(AppState *app) {
 }
 
 static int visible_index(const AppState *app, int slot) {
-    int seen = 0;
-    for (int i = 0; i < app->titles.count; i++) {
-        if (!app->show_unsupported && !title_class_supported(app->titles.items[i].kind)) continue;
-        if (seen == slot) return i;
-        seen++;
-    }
-    return -1;
+    return titles_filtered_index(&app->titles, slot, app->show_unsupported, app->search_query);
 }
 
 static int visible_count(const AppState *app) {
-    int seen = 0;
-    for (int i = 0; i < app->titles.count; i++) {
-        if (app->show_unsupported || title_class_supported(app->titles.items[i].kind)) seen++;
-    }
-    return seen;
+    return titles_filtered_count(&app->titles, app->show_unsupported, app->search_query);
+}
+
+static const char *title_kind_label(const TitleEntry *title) {
+    if (title->kind == TITLE_SUPPORTED_DS_SAVE) return "DS save";
+    if (title->kind == TITLE_SUPPORTED_DSIWARE) return "DSiWare";
+    return media_label(title->media);
 }
 
 static void draw_icon(TitleEntry *title, float x, float y, float scale) {
@@ -126,8 +127,8 @@ static void badge(float x, float y, float w, u32 color, AppState *app, const cha
 static void draw_top(AppState *app) {
     C2D_DrawRectSolid(0, 0, 0, 400, 34, COL_PANEL2);
     C2D_DrawRectSolid(0, 34, 0, 400, 2, COL_ACCENT);
-    text(app, 16, 6, 0.56f, COL_TEXT, "2DSync");
-    text(app, 122, 10, 0.32f, COL_ACCENT, "v0.1.3");
+    text(app, 16, 6, 0.58f, COL_TEXT, "2DSync");
+    text(app, 122, 10, 0.36f, COL_ACCENT, "v0.1.4");
     const char *status = app->online ? "Online" : "Offline";
     badge(app->online ? 318 : 312, 9, app->online ? 66 : 72, app->online ? COL_OK : COL_WARN, app, status);
 
@@ -136,11 +137,11 @@ static void draw_top(AppState *app) {
     if (title) {
         draw_icon(title, 16, 48, 1.0f);
         trim_copy(line, sizeof(line), title->name, 28);
-        text(app, 78, 46, 0.50f, COL_TEXT, line);
+        text(app, 78, 44, 0.54f, COL_TEXT, line);
         char id[20];
         format_title_id(id, title->title_id);
-        snprintf(line, sizeof(line), "%s   %s", id, media_label(title->media));
-        text(app, 78, 68, 0.34f, COL_MUTED, line);
+        snprintf(line, sizeof(line), "%s   %s", id, title_kind_label(title));
+        text(app, 78, 68, 0.38f, COL_MUTED, line);
         badge(78, 90, title->has_save ? 92 : 118, title->has_save ? COL_OK : COL_WARN, app,
               title->has_save ? "Save on console" : "No save archive");
     } else {
@@ -178,8 +179,8 @@ static void draw_menu(AppState *app, const char *title, const char **labels, con
     for (int i = 0; i < count && i < VISIBLE_ROWS; i++) {
         float y = row_y(i);
         row(y, app->cursor == i);
-        text(app, 26, y + 8, 0.44f, app->cursor == i ? COL_TEXT : COL_MUTED, labels[i]);
-        if (values && values[i] && values[i][0]) text(app, 168, y + 10, 0.34f, COL_ACCENT, values[i]);
+        text(app, 26, y + 6, 0.48f, app->cursor == i ? COL_TEXT : COL_MUTED, labels[i]);
+        if (values && values[i] && values[i][0]) text(app, 168, y + 8, 0.38f, COL_ACCENT, values[i]);
     }
     hint(app, footer);
 }
@@ -190,15 +191,17 @@ static void draw_home(AppState *app) {
 }
 
 static void draw_games(AppState *app) {
-    heading(app, "My Games", app->show_unsupported ? "All titles" : "Supported");
+    char aside[48];
+    list_aside(app, aside, sizeof(aside), app->show_unsupported ? "All titles" : "3DS / DS / DSi");
+    heading(app, "My Games", aside);
     int count = visible_count(app);
     if (!app->scanned) {
-        text(app, 16, 90, 0.46f, COL_MUTED, "Scanning titles...");
+        text(app, 16, 90, 0.50f, COL_MUTED, "Scanning titles...");
         return;
     }
     if (count == 0) {
-        text(app, 16, 90, 0.42f, COL_MUTED, "No supported games found.");
-        hint(app, "X  show unsupported      B  back");
+        text(app, 16, 90, 0.46f, COL_MUTED, app->search_query[0] ? "No games match your search." : "No supported games found.");
+        hint(app, "Y  search      X  all titles      B  back");
         return;
     }
     if (app->cursor < app->scroll) app->scroll = app->cursor;
@@ -212,14 +215,14 @@ static void draw_games(AppState *app) {
         row(y, app->cursor == vis);
         draw_icon(title, 20, y + 6, 0.46f);
         char name[64];
-        trim_copy(name, sizeof(name), title->name, 18);
-        text(app, 50, y + 3, 0.38f, COL_TEXT, name);
+        trim_copy(name, sizeof(name), title->name, 20);
+        text(app, 50, y + 2, 0.44f, COL_TEXT, name);
         char meta[80];
-        snprintf(meta, sizeof(meta), "%s", media_label(title->media));
-        text(app, 50, y + 18, 0.30f, title_class_supported(title->kind) ? COL_MUTED : COL_WARN, meta);
-        text(app, 230, y + 10, 0.30f, title->has_save ? COL_OK : COL_WARN, title->has_save ? "Save" : "No save");
+        snprintf(meta, sizeof(meta), "%s", title_kind_label(title));
+        text(app, 50, y + 17, 0.34f, title_class_supported(title->kind) ? COL_MUTED : COL_WARN, meta);
+        text(app, 220, y + 9, 0.34f, title->has_save ? COL_OK : COL_WARN, title->has_save ? "Save" : "No save");
     }
-    hint(app, "X  unsupported      B  back");
+    hint(app, "Y  search      L  clear      X  all titles      B  back");
 }
 
 static void draw_game(AppState *app) {
@@ -231,34 +234,47 @@ static void draw_game(AppState *app) {
 }
 
 static void draw_simple_list(AppState *app, const char *title, int count, const char *empty, void (*label)(AppState *, int, char *, size_t)) {
-    heading(app, title, NULL);
+    char aside[48];
+    list_aside(app, aside, sizeof(aside), NULL);
+    heading(app, title, aside[0] ? aside : NULL);
     if (count <= 0) {
-        text(app, 16, 90, 0.42f, COL_MUTED, empty);
-        hint(app, "B  back");
+        text(app, 16, 90, 0.46f, COL_MUTED, empty);
+        hint(app, "Y  search      B  back");
         return;
     }
     if (app->cursor < app->scroll) app->scroll = app->cursor;
     if (app->cursor >= app->scroll + VISIBLE_ROWS) app->scroll = app->cursor - VISIBLE_ROWS + 1;
     for (int slot = 0; slot < VISIBLE_ROWS; slot++) {
-        int index = app->scroll + slot;
-        if (index >= count) break;
+        int vis = app->scroll + slot;
+        if (vis >= count) break;
+        int index = app_scrolling_index(app, vis);
+        if (index < 0) break;
         float y = row_y(slot);
-        row(y, app->cursor == index);
+        row(y, app->cursor == vis);
         char line[80];
         label(app, index, line, sizeof(line));
-        text(app, 26, y + 8, 0.40f, COL_TEXT, line);
+        text(app, 26, y + 6, 0.44f, COL_TEXT, line);
     }
-    hint(app, "A  select      B  back");
+    hint(app, "Y  search      L  clear      A  select      B  back");
 }
 
 static void cloud_label(AppState *app, int index, char *out, size_t n) {
     char bytes[24];
     format_bytes(bytes, sizeof(bytes), app->cloud_items[index].bytes);
-    snprintf(out, n, "%s   %s", app->cloud_items[index].title_id, bytes);
+    char name[40];
+    trim_copy(name, sizeof(name), app->cloud_items[index].name, 16);
+    snprintf(out, n, "%s   %s", name, bytes);
 }
 
 static void hist_label(AppState *app, int index, char *out, size_t n) {
     char bytes[24];
+    if (app->history_all) {
+        format_bytes(bytes, sizeof(bytes), app->catalog[index].bytes);
+        char name[28];
+        trim_copy(name, sizeof(name), app->catalog[index].name, 14);
+        snprintf(out, n, "%s   %s   %s", name, app->catalog[index].label, bytes);
+        return;
+    }
     format_bytes(bytes, sizeof(bytes), app->backups[index].bytes);
     snprintf(out, n, "%s   %s", app->backups[index].label, bytes);
 }
@@ -389,11 +405,12 @@ void ui_frame(AppState *app) {
         case SCREEN_GAMES: draw_games(app); break;
         case SCREEN_GAME: draw_game(app); break;
         case SCREEN_CLOUD:
-            draw_simple_list(app, "Cloud Saves", app->cloud_count, "No cloud saves yet.", cloud_label);
+            draw_simple_list(app, "Cloud Saves", app_scrolling_count(app), "No cloud saves yet.", cloud_label);
             break;
         case SCREEN_SYNC: draw_sync(app); break;
         case SCREEN_HISTORY:
-            draw_simple_list(app, "Backup History", app->backup_count, "No local backups for this game.", hist_label);
+            draw_simple_list(app, app->history_all ? "All Backups" : "Backup History", app_scrolling_count(app),
+                             app->history_all ? "No local backups yet." : "No local backups for this game.", hist_label);
             break;
         case SCREEN_SETTINGS: draw_settings(app); break;
         case SCREEN_DEVICES:

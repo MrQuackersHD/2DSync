@@ -30,11 +30,110 @@ static void refresh_online(AppState *app) {
     app->online = network_status() == 3;
 }
 
+static int list_count(AppState *app);
+static int filtered_index(AppState *app, int slot);
+
+static int list_count(AppState *app) {
+    switch (app->screen) {
+        case SCREEN_GAMES:
+            return titles_filtered_count(&app->titles, app->show_unsupported, app->search_query);
+        case SCREEN_CLOUD: {
+            int n = 0;
+            for (int i = 0; i < app->cloud_count; i++) {
+                if (!app->search_query[0]) {
+                    n++;
+                    continue;
+                }
+                if (str_contains_ci(app->cloud_items[i].name, app->search_query) ||
+                    str_contains_ci(app->cloud_items[i].title_id, app->search_query))
+                    n++;
+            }
+            return n;
+        }
+        case SCREEN_HISTORY:
+            if (app->history_all) {
+                int n = 0;
+                for (int i = 0; i < app->catalog_count; i++) {
+                    if (!app->search_query[0]) {
+                        n++;
+                        continue;
+                    }
+                    char id[17];
+                    format_title_id(id, app->catalog[i].title_id);
+                    if (str_contains_ci(app->catalog[i].name, app->search_query) ||
+                        str_contains_ci(app->catalog[i].label, app->search_query) ||
+                        str_contains_ci(id, app->search_query))
+                        n++;
+                }
+                return n;
+            }
+            return app->backup_count;
+        default:
+            return 0;
+    }
+}
+
+int app_scrolling_count(AppState *app) {
+    if (app->screen == SCREEN_HISTORY && !app->history_all && app->search_query[0]) {
+        int n = 0;
+        for (int i = 0; i < app->backup_count; i++) {
+            if (str_contains_ci(app->backups[i].label, app->search_query)) n++;
+        }
+        return n;
+    }
+    return list_count(app);
+}
+
+int app_scrolling_index(AppState *app, int slot) {
+    if (app->screen == SCREEN_HISTORY && !app->history_all && app->search_query[0]) {
+        int seen = 0;
+        for (int i = 0; i < app->backup_count; i++) {
+            if (!str_contains_ci(app->backups[i].label, app->search_query)) continue;
+            if (seen == slot) return i;
+            seen++;
+        }
+        return -1;
+    }
+    return filtered_index(app, slot);
+}
+
+static int filtered_index(AppState *app, int slot) {
+    if (app->screen == SCREEN_GAMES) {
+        return titles_filtered_index(&app->titles, slot, app->show_unsupported, app->search_query);
+    }
+    if (app->screen == SCREEN_CLOUD) {
+        int seen = 0;
+        for (int i = 0; i < app->cloud_count; i++) {
+            int match = !app->search_query[0] || str_contains_ci(app->cloud_items[i].name, app->search_query) ||
+                        str_contains_ci(app->cloud_items[i].title_id, app->search_query);
+            if (!match) continue;
+            if (seen == slot) return i;
+            seen++;
+        }
+        return -1;
+    }
+    if (app->screen == SCREEN_HISTORY && app->history_all) {
+        int seen = 0;
+        for (int i = 0; i < app->catalog_count; i++) {
+            char id[17];
+            format_title_id(id, app->catalog[i].title_id);
+            int match = !app->search_query[0] || str_contains_ci(app->catalog[i].name, app->search_query) ||
+                        str_contains_ci(app->catalog[i].label, app->search_query) || str_contains_ci(id, app->search_query);
+            if (!match) continue;
+            if (seen == slot) return i;
+            seen++;
+        }
+        return -1;
+    }
+    return slot;
+}
+
 static void go(AppState *app, Screen screen) {
     app->screen = screen;
     app->cursor = 0;
     app->scroll = 0;
     app->sync_code[0] = 0;
+    if (screen != SCREEN_GAMES && screen != SCREEN_CLOUD && screen != SCREEN_HISTORY) app->search_query[0] = 0;
 }
 
 static int confirm(AppState *app, const char *title, const char *body) {
@@ -350,14 +449,58 @@ static void do_backup(AppState *app) {
 static void load_history(AppState *app) {
     TitleEntry *title = current_title(app);
     app->backup_count = 0;
+    app->history_all = 0;
     if (!title) return;
     app->backup_count = backup_list(title->title_id, app->backups, MAX_BACKUPS);
 }
 
+static void load_all_backups(AppState *app) {
+    app->backup_count = 0;
+    app->history_all = 1;
+    app->catalog_count = backup_catalog(app->catalog, MAX_CATALOG_BACKUPS, &app->titles);
+}
+
+static void enrich_cloud_names(AppState *app) {
+    for (int i = 0; i < app->cloud_count; i++) {
+        u64 tid = 0;
+        if (sscanf(app->cloud_items[i].title_id, "%16llx", (unsigned long long *)&tid) == 1) {
+            titles_lookup_name(&app->titles, tid, app->cloud_items[i].name, sizeof(app->cloud_items[i].name));
+        } else {
+            snprintf(app->cloud_items[i].name, sizeof(app->cloud_items[i].name), "%s", app->cloud_items[i].title_id);
+        }
+    }
+}
+
+static void prompt_search(AppState *app) {
+    char query[48];
+    snprintf(query, sizeof(query), "%s", app->search_query);
+    if (!ui_prompt("Search name, code, or title ID", query, sizeof(query), 0)) return;
+    snprintf(app->search_query, sizeof(app->search_query), "%s", query);
+    app->cursor = 0;
+    app->scroll = 0;
+}
+
 static void do_restore_selected(AppState *app) {
     TitleEntry *title = NULL;
-    if (require_supported(app, &title) != 0) return;
-    if (app->cursor < 0 || app->cursor >= app->backup_count) return;
+    const char *path = NULL;
+    if (app->history_all) {
+        int idx = app_scrolling_index(app, app->cursor);
+        if (idx < 0 || idx >= app->catalog_count) return;
+        BackupCatalogItem *item = &app->catalog[idx];
+        int idx = titles_find_index(&app->titles, item->title_id);
+        if (idx < 0) {
+            toast(app, "Rescan games, then try again");
+            return;
+        }
+        app->title_index = idx;
+        title = &app->titles.items[idx];
+        path = item->path;
+    } else {
+        if (require_supported(app, &title) != 0) return;
+        int idx = app_scrolling_index(app, app->cursor);
+        if (idx < 0 || idx >= app->backup_count) return;
+        path = app->backups[idx].path;
+    }
     if (!confirm(app, "Restore Backup", "The current save is backed up first. Continue?")) return;
     char pre[384] = {0}, content[65], container[65], err[180];
     if (title->has_save) {
@@ -369,7 +512,7 @@ static void do_restore_selected(AppState *app) {
         }
     }
     app->busy = 1;
-    int rc = backup_restore(title, app->backups[app->cursor].path, err, sizeof(err), progress_cb);
+    int rc = backup_restore(title, path, err, sizeof(err), progress_cb);
     if (rc != 0 && pre[0]) backup_restore(title, pre, err, sizeof(err), progress_cb);
     app->busy = 0;
     if (rc == 0) {
@@ -379,21 +522,11 @@ static void do_restore_selected(AppState *app) {
 }
 
 static int visible_index(const AppState *app, int slot) {
-    int seen = 0;
-    for (int i = 0; i < app->titles.count; i++) {
-        if (!app->show_unsupported && !title_class_supported(app->titles.items[i].kind)) continue;
-        if (seen == slot) return i;
-        seen++;
-    }
-    return -1;
+    return titles_filtered_index(&app->titles, slot, app->show_unsupported, app->search_query);
 }
 
 static int visible_count(const AppState *app) {
-    int seen = 0;
-    for (int i = 0; i < app->titles.count; i++) {
-        if (app->show_unsupported || title_class_supported(app->titles.items[i].kind)) seen++;
-    }
-    return seen;
+    return titles_filtered_count(&app->titles, app->show_unsupported, app->search_query);
 }
 
 static void open_game(AppState *app) {
@@ -621,20 +754,33 @@ int app_frame(AppState *app) {
     int count = 0;
     switch (app->screen) {
         case SCREEN_HOME: count = 5; break;
-        case SCREEN_GAMES: count = visible_count(app); break;
+        case SCREEN_GAMES: count = app_scrolling_count(app); break;
         case SCREEN_GAME: count = 5; break;
-        case SCREEN_CLOUD: count = app->cloud_count; break;
+        case SCREEN_CLOUD: count = app_scrolling_count(app); break;
         case SCREEN_SYNC: count = config_has_token(&app->cfg) ? 5 : 3; break;
-        case SCREEN_HISTORY: count = app->backup_count; break;
+        case SCREEN_HISTORY: count = app_scrolling_count(app); break;
         case SCREEN_SETTINGS: count = 5; break;
         case SCREEN_DEVICES: count = app->device_count; break;
         case SCREEN_PENDING: count = app->pending_count; break;
     }
     int touched = count > 0 ? move_cursor(app, count, down) : 0;
-    if (app->screen == SCREEN_GAMES && (down & KEY_X)) app->show_unsupported = !app->show_unsupported;
+    if (app->screen == SCREEN_GAMES && (down & KEY_X)) {
+        app->show_unsupported = !app->show_unsupported;
+        app->cursor = 0;
+        app->scroll = 0;
+    }
+    if ((app->screen == SCREEN_GAMES || app->screen == SCREEN_CLOUD || app->screen == SCREEN_HISTORY) && (down & KEY_Y)) prompt_search(app);
+    if ((app->screen == SCREEN_GAMES || app->screen == SCREEN_CLOUD || app->screen == SCREEN_HISTORY) && (down & KEY_L) && app->search_query[0]) {
+        app->search_query[0] = 0;
+        app->cursor = 0;
+        app->scroll = 0;
+        toast(app, "Search cleared");
+    }
     if (down & KEY_B && app->screen != SCREEN_HOME) {
-        if (app->screen == SCREEN_HISTORY) go(app, SCREEN_GAME);
-        else if (app->screen == SCREEN_GAME) go(app, SCREEN_GAMES);
+        if (app->screen == SCREEN_HISTORY) {
+            if (app->history_all) go(app, SCREEN_HOME);
+            else go(app, SCREEN_GAME);
+        } else if (app->screen == SCREEN_GAME) go(app, SCREEN_GAMES);
         else if (app->screen == SCREEN_PENDING || app->screen == SCREEN_DEVICES) go(app, SCREEN_SYNC);
         else go(app, SCREEN_HOME);
     } else if ((down & KEY_A) || touched) {
@@ -646,11 +792,12 @@ int app_frame(AppState *app) {
                 int n = cloud_list_saves(&app->cfg, app->cloud_items, 32, err, sizeof(err));
                 app->busy = 0;
                 app->cloud_count = n < 0 ? 0 : n;
+                if (n >= 0) enrich_cloud_names(app);
                 if (n < 0) toast(app, err);
                 go(app, SCREEN_CLOUD);
             } else if (app->cursor == 2) go(app, SCREEN_SYNC);
             else if (app->cursor == 3) {
-                load_history(app);
+                load_all_backups(app);
                 go(app, SCREEN_HISTORY);
             } else go(app, SCREEN_SETTINGS);
         } else if (app->screen == SCREEN_GAMES && count > 0) {
@@ -673,8 +820,9 @@ int app_frame(AppState *app) {
                     do_restore_selected(app);
                     app->cursor = saved;
                 }
-            } else {
+            }             else {
                 load_history(app);
+                app->history_all = 0;
                 go(app, SCREEN_HISTORY);
             }
         } else if (app->screen == SCREEN_HISTORY && ((down & KEY_A) || touched)) do_restore_selected(app);

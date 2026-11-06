@@ -42,6 +42,7 @@ int cloud_download_version(const AppConfig *cfg, const char *title_hex, const ch
 
 typedef struct CloudListItem {
     char title_id[20];
+    char name[96];
     char created_at[40];
     unsigned long long bytes;
 } CloudListItem;

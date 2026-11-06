@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Improved on-screen text contrast and larger labels on the bottom screen.
+- Cloud saves and the all-backups view show game names, not only title IDs.
+- DSiWare and Nintendo DS `.sav` files on the SD card sync like 3DS save archives.
+- Search on My Games, Cloud Saves, and Backup History (Y to search, L to clear).
+
 ## 0.1.0
 
 - Rebuilt the CIA so the system loader accepts it. The first file crashed on launch with an undefined instruction in the loader.

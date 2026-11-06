@@ -19,6 +19,7 @@ typedef struct TitleEntry {
     int has_extdata;
     u64 extdata_id;
     char note[72];
+    char ds_save_path[128];
     C3D_Tex tex;
     Tex3DS_SubTexture sub;
     int icon_ready;
@@ -35,3 +36,10 @@ void titles_free_icons(TitleList *list);
 int titles_scan(TitleList *list, void (*progress)(const char *, int));
 void titles_load_icon(TitleEntry *title);
 const char *media_label(FS_MediaType media);
+int title_entry_visible(const TitleEntry *entry, int show_unsupported);
+int title_entry_matches(const TitleEntry *entry, const char *search);
+int titles_filtered_count(const TitleList *list, int show_unsupported, const char *search);
+int titles_filtered_index(const TitleList *list, int slot, int show_unsupported, const char *search);
+void titles_cache_names(const TitleList *list);
+void titles_lookup_name(const TitleList *list, u64 title_id, char *out, size_t out_len);
+int titles_find_index(const TitleList *list, u64 title_id);

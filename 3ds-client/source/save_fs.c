@@ -178,6 +178,54 @@ int save_export_to(const TitleEntry *title, const char *dir, SaveSnapshot *snap,
         set_err(err, err_len, title_class_reason(title->kind));
         return -1;
     }
+    if (title->kind == TITLE_SUPPORTED_DS_SAVE) {
+        if (!title->ds_save_path[0]) {
+            set_err(err, err_len, "DS save path is missing");
+            return -1;
+        }
+        struct stat st;
+        if (stat(title->ds_save_path, &st) != 0 || st.st_size <= 0) {
+            set_err(err, err_len, "DS save file is missing");
+            return -1;
+        }
+        if ((u64)st.st_size > 8ull * 1024ull * 1024ull) {
+            set_err(err, err_len, "A save file is too large");
+            return -1;
+        }
+        mkdir_p(dir);
+        char save_dir[512];
+        snprintf(save_dir, sizeof(save_dir), "%s/savedata", dir);
+        mkdir_p(save_dir);
+        const char *base = strrchr(title->ds_save_path, '/');
+        base = base ? base + 1 : title->ds_save_path;
+        char dest[512];
+        snprintf(dest, sizeof(dest), "%s/%s", save_dir, base);
+        FILE *in = fopen(title->ds_save_path, "rb");
+        FILE *out = fopen(dest, "wb");
+        if (!in || !out) {
+            if (in) fclose(in);
+            if (out) fclose(out);
+            set_err(err, err_len, "Could not copy the DS save");
+            return -1;
+        }
+        static u8 buf[32 * 1024];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+            if (fwrite(buf, 1, n, out) != n) {
+                fclose(in);
+                fclose(out);
+                remove(dest);
+                set_err(err, err_len, "Could not copy the DS save");
+                return -1;
+            }
+        }
+        fclose(in);
+        fflush(out);
+        fclose(out);
+        snap->file_count = 1;
+        if (progress) progress("Copying DS save", 100);
+        return 0;
+    }
     mkdir_p(dir);
     char save_dir[512], ext_dir[512];
     snprintf(save_dir, sizeof(save_dir), "%s/savedata", dir);
@@ -370,6 +418,61 @@ int save_import_from(const TitleEntry *title, const char *dir, const SaveSnapsho
     if (!title_class_supported(title->kind)) {
         set_err(err, err_len, title_class_reason(title->kind));
         return -1;
+    }
+    if (title->kind == TITLE_SUPPORTED_DS_SAVE) {
+        if (!title->ds_save_path[0]) {
+            set_err(err, err_len, "DS save path is missing");
+            return -1;
+        }
+        char root[512];
+        snprintf(root, sizeof(root), "%s/savedata", dir);
+        struct stat st;
+        if (stat(root, &st) != 0) {
+            set_err(err, err_len, "Backup has no DS save data");
+            return -1;
+        }
+        DIR *d = opendir(root);
+        if (!d) {
+            set_err(err, err_len, "Could not read the DS save backup");
+            return -1;
+        }
+        char src[512] = {0};
+        struct dirent *de;
+        while ((de = readdir(d)) != NULL) {
+            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+            snprintf(src, sizeof(src), "%s/%s", root, de->d_name);
+            break;
+        }
+        closedir(d);
+        if (!src[0]) {
+            set_err(err, err_len, "Backup has no DS save file");
+            return -1;
+        }
+        if (progress) progress("Restoring DS save", 40);
+        FILE *in = fopen(src, "rb");
+        FILE *out = fopen(title->ds_save_path, "wb");
+        if (!in || !out) {
+            if (in) fclose(in);
+            if (out) fclose(out);
+            set_err(err, err_len, "Could not restore the DS save");
+            return -1;
+        }
+        static u8 buf[32 * 1024];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+            if (fwrite(buf, 1, n, out) != n) {
+                fclose(in);
+                fclose(out);
+                set_err(err, err_len, "Could not restore the DS save");
+                return -1;
+            }
+        }
+        fclose(in);
+        fflush(out);
+        fclose(out);
+        (void)snap;
+        if (progress) progress("Save committed", 100);
+        return 0;
     }
     if (import_one(title, 0, dir, err, err_len, progress) != 0) return -1;
     if (title->extdata_id && import_one(title, 1, dir, err, err_len, progress) != 0) return -1;

@@ -1,6 +1,7 @@
 #include "backup.h"
 #include "container.h"
 #include "sha256.h"
+#include "titles.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -91,6 +92,44 @@ int backup_list(u64 title_id, LocalBackup *items, int max_items) {
                 items[i] = items[j];
                 items[j] = tmp;
             }
+        }
+    }
+    return count;
+}
+
+int backup_catalog(BackupCatalogItem *items, int max_items, const TitleList *titles) {
+    DIR *root = opendir(TWODSYNC_ROOT "/backups");
+    if (!root) return 0;
+    int count = 0;
+    struct dirent *de;
+    while ((de = readdir(root)) != NULL && count < max_items) {
+        if (de->d_name[0] == '.') continue;
+        char dirpath[384];
+        snprintf(dirpath, sizeof(dirpath), TWODSYNC_ROOT "/backups/%s", de->d_name);
+        struct stat st;
+        if (stat(dirpath, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+        u64 title_id = 0;
+        if (sscanf(de->d_name, "%16llx", (unsigned long long *)&title_id) != 1) continue;
+        LocalBackup per_title[MAX_BACKUPS];
+        int n = backup_list(title_id, per_title, MAX_BACKUPS);
+        for (int i = 0; i < n && count < max_items; i++) {
+            BackupCatalogItem *item = &items[count];
+            memset(item, 0, sizeof(*item));
+            item->title_id = title_id;
+            titles_lookup_name(titles, title_id, item->name, sizeof(item->name));
+            snprintf(item->path, sizeof(item->path), "%s", per_title[i].path);
+            snprintf(item->label, sizeof(item->label), "%s", per_title[i].label);
+            item->bytes = per_title[i].bytes;
+            count++;
+        }
+    }
+    closedir(root);
+    for (int i = 0; i < count; i++) {
+        for (int j = i + 1; j < count; j++) {
+            if (strcmp(items[j].label, items[i].label) > 0) continue;
+            BackupCatalogItem tmp = items[i];
+            items[i] = items[j];
+            items[j] = tmp;
         }
     }
     return count;

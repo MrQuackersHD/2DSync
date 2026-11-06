@@ -2,9 +2,12 @@
 #include "icon_tiles.h"
 #include "util.h"
 
+#include <strings.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #define OWN_TITLE 0x0004000002D59C00ULL
 
@@ -133,6 +136,17 @@ void titles_load_icon(TitleEntry *title) {
 }
 
 static void probe_save(TitleEntry *title) {
+    if (title->kind == TITLE_SUPPORTED_DS_SAVE) {
+        struct stat st;
+        if (title->ds_save_path[0] && stat(title->ds_save_path, &st) == 0 && st.st_size > 0) {
+            title->has_save = 1;
+            snprintf(title->note, sizeof(title->note), "DS save on SD card");
+        } else {
+            title->has_save = 0;
+            snprintf(title->note, sizeof(title->note), "DS save file missing");
+        }
+        return;
+    }
     if (!title_class_supported(title->kind)) {
         snprintf(title->note, sizeof(title->note), "%s", title_class_reason(title->kind));
         return;
@@ -228,17 +242,165 @@ int titles_scan(TitleList *list, void (*progress)(const char *, int)) {
     CFGU_GetSystemLanguage(&language);
     if (progress) progress("Scanning SD titles", 0);
     if (add_media(list, MEDIATYPE_SD, language, progress) != 0) return -1;
+    if (progress) progress("Scanning DSiWare", 35);
+    if (add_media(list, MEDIATYPE_NAND, language, progress) != 0) return -1;
+    if (progress) progress("Scanning DS saves", 45);
+    scan_ds_saves(list, progress);
     bool inserted = false;
     if (R_SUCCEEDED(FSUSER_CardSlotIsInserted(&inserted)) && inserted) {
         if (progress) progress("Scanning cartridge", 50);
         if (add_media(list, MEDIATYPE_GAME_CARD, language, progress) != 0) return -1;
     }
     if (progress) progress("Scan complete", 100);
+    titles_cache_names(list);
     return 0;
 }
 
 const char *media_label(FS_MediaType media) {
     if (media == MEDIATYPE_GAME_CARD) return "Cartridge";
     if (media == MEDIATYPE_SD) return "Digital";
-    return "NAND";
+    if (media == MEDIATYPE_NAND) return "NAND";
+    return "Unknown";
+}
+
+int title_entry_visible(const TitleEntry *entry, int show_unsupported) {
+    if (!entry) return 0;
+    return show_unsupported || title_class_supported(entry->kind);
+}
+
+int title_entry_matches(const TitleEntry *entry, const char *search) {
+    if (!entry) return 0;
+    if (!search || !search[0]) return 1;
+    char id[17];
+    format_title_id(id, entry->title_id);
+    if (str_contains_ci(entry->name, search)) return 1;
+    if (str_contains_ci(entry->product, search)) return 1;
+    if (str_contains_ci(id, search)) return 1;
+    if (entry->ds_save_path[0] && str_contains_ci(entry->ds_save_path, search)) return 1;
+    return 0;
+}
+
+int titles_filtered_count(const TitleList *list, int show_unsupported, const char *search) {
+    int seen = 0;
+    for (int i = 0; i < list->count; i++) {
+        if (!title_entry_visible(&list->items[i], show_unsupported)) continue;
+        if (!title_entry_matches(&list->items[i], search)) continue;
+        seen++;
+    }
+    return seen;
+}
+
+int titles_filtered_index(const TitleList *list, int slot, int show_unsupported, const char *search) {
+    int seen = 0;
+    for (int i = 0; i < list->count; i++) {
+        if (!title_entry_visible(&list->items[i], show_unsupported)) continue;
+        if (!title_entry_matches(&list->items[i], search)) continue;
+        if (seen == slot) return i;
+        seen++;
+    }
+    return -1;
+}
+
+int titles_find_index(const TitleList *list, u64 title_id) {
+    for (int i = 0; i < list->count; i++) {
+        if (list->items[i].title_id == title_id) return i;
+    }
+    return -1;
+}
+
+void titles_lookup_name(const TitleList *list, u64 title_id, char *out, size_t out_len) {
+    if (!out || out_len < 2) return;
+    int idx = titles_find_index(list, title_id);
+    if (idx >= 0 && list->items[idx].name[0]) {
+        snprintf(out, out_len, "%s", list->items[idx].name);
+        return;
+    }
+    char id[17];
+    format_title_id(id, title_id);
+    char path[384];
+    snprintf(path, sizeof(path), TWODSYNC_ROOT "/state/names.txt");
+    FILE *f = fopen(path, "rb");
+    if (f) {
+        char line[160];
+        while (fgets(line, sizeof(line), f)) {
+            char *eq = strchr(line, '=');
+            if (!eq) continue;
+            *eq = 0;
+            if (strcasecmp(line, id) == 0) {
+                char *name = eq + 1;
+                size_t n = strlen(name);
+                while (n > 0 && (name[n - 1] == '\n' || name[n - 1] == '\r')) name[--n] = 0;
+                snprintf(out, out_len, "%s", name);
+                fclose(f);
+                return;
+            }
+        }
+        fclose(f);
+    }
+    if ((title_id >> 32) == 0x00048001ULL) snprintf(out, out_len, "DS Save");
+    else snprintf(out, out_len, "Title %s", id);
+}
+
+void titles_cache_names(const TitleList *list) {
+    char dir[384];
+    snprintf(dir, sizeof(dir), TWODSYNC_ROOT "/state");
+    mkdir_p(dir);
+    char path[384];
+    snprintf(path, sizeof(path), "%s/names.txt", dir);
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    for (int i = 0; i < list->count; i++) {
+        if (!list->items[i].name[0]) continue;
+        char id[17];
+        format_title_id(id, list->items[i].title_id);
+        fprintf(f, "%s=%s\n", id, list->items[i].name);
+    }
+    fclose(f);
+}
+
+static void name_from_ds_filename(char *out, size_t out_len, const char *filename) {
+    snprintf(out, out_len, "%s", filename);
+    size_t n = strlen(out);
+    if (n > 4 && strcasecmp(out + n - 4, ".sav") == 0) out[n - 4] = 0;
+    for (char *p = out; *p; p++) {
+        if (*p == '_') *p = ' ';
+    }
+}
+
+static int ds_save_exists(const TitleList *list, u64 title_id) {
+    for (int i = 0; i < list->count; i++) {
+        if (list->items[i].title_id == title_id) return 1;
+    }
+    return 0;
+}
+
+static void scan_ds_save_dir(TitleList *list, const char *dirpath, void (*progress)(const char *, int)) {
+    DIR *dir = opendir(dirpath);
+    if (!dir) return;
+    struct dirent *de;
+    while ((de = readdir(dir)) != NULL && list->count < MAX_TITLES) {
+        size_t len = strlen(de->d_name);
+        if (len < 5) continue;
+        if (strcasecmp(de->d_name + len - 4, ".sav") != 0) continue;
+        u64 tid = title_id_for_ds_save(de->d_name);
+        if (ds_save_exists(list, tid)) continue;
+        TitleEntry *title = &list->items[list->count];
+        memset(title, 0, sizeof(*title));
+        title->title_id = tid;
+        title->media = MEDIATYPE_SD;
+        title->kind = TITLE_SUPPORTED_DS_SAVE;
+        snprintf(title->ds_save_path, sizeof(title->ds_save_path), "%s/%s", dirpath, de->d_name);
+        name_from_ds_filename(title->name, sizeof(title->name), de->d_name);
+        snprintf(title->product, sizeof(title->product), "DS");
+        probe_save(title);
+        list->supported_count++;
+        list->count++;
+        if (progress) progress("Scanning DS saves", -1);
+    }
+    closedir(dir);
+}
+
+static void scan_ds_saves(TitleList *list, void (*progress)(const char *, int)) {
+    scan_ds_save_dir(list, "sdmc:/Nintendo DS/Save", progress);
+    scan_ds_save_dir(list, "sdmc:/Nintendo DS/Save data", progress);
 }

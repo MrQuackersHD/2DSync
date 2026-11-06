@@ -41,6 +41,10 @@ typedef struct AppState {
     int pending_count;
     CloudListItem cloud_items[32];
     int cloud_count;
+    BackupCatalogItem catalog[MAX_CATALOG_BACKUPS];
+    int catalog_count;
+    int history_all;
+    char search_query[48];
     char sync_code[16];
     char recovery_shown[40];
     int recovery_active;
@@ -67,3 +71,5 @@ int ui_prompt(const char *hint, char *out, size_t out_len, int digits);
 int ui_list_slot(int py);
 int ui_dialog_slot(int py, int count);
 void ui_flush_input(void);
+int app_scrolling_count(AppState *app);
+int app_scrolling_index(AppState *app, int slot);

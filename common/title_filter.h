@@ -8,8 +8,9 @@ typedef enum TitleClass {
     TITLE_UNSUPPORTED_DEMO = 2,
     TITLE_UNSUPPORTED_UPDATE = 3,
     TITLE_UNSUPPORTED_DLC = 4,
-    TITLE_UNSUPPORTED_DSIWARE = 5,
-    TITLE_UNSUPPORTED_OTHER = 6
+    TITLE_SUPPORTED_DSIWARE = 5,
+    TITLE_SUPPORTED_DS_SAVE = 6,
+    TITLE_UNSUPPORTED_OTHER = 7
 } TitleClass;
 
 enum {
@@ -21,3 +22,4 @@ enum {
 TitleClass classify_title(uint64_t title_id, int media_type);
 const char *title_class_reason(TitleClass kind);
 int title_class_supported(TitleClass kind);
+uint64_t title_id_for_ds_save(const char *filename);

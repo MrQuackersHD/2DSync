@@ -145,3 +145,31 @@ int write_entire_file(const char *path, const void *buf, size_t len) {
     }
     return 0;
 }
+
+int str_contains_ci(const char *haystack, const char *needle) {
+    if (!needle || !needle[0]) return 1;
+    if (!haystack) return 0;
+    char nbuf[48];
+    str_tolower_copy(nbuf, sizeof(nbuf), needle);
+    for (const char *p = haystack; *p; p++) {
+        char hbuf[256];
+        size_t hi = 0;
+        for (const char *q = p; *q && hi + 1 < sizeof(hbuf); q++) hbuf[hi++] = (char)*q;
+        hbuf[hi] = 0;
+        str_tolower_copy(hbuf, sizeof(hbuf), hbuf);
+        if (strstr(hbuf, nbuf)) return 1;
+        if (hi >= sizeof(hbuf) - 1) break;
+    }
+    return 0;
+}
+
+void str_tolower_copy(char *out, size_t out_len, const char *src) {
+    size_t i = 0;
+    if (!out_len) return;
+    for (; src && src[i] && i + 1 < out_len; i++) {
+        char c = src[i];
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        out[i] = c;
+    }
+    out[i] = 0;
+}

@@ -17,3 +17,5 @@ int path_join(char *out, size_t out_len, const char *a, const char *b);
 void trim_copy(char *dst, size_t dst_len, const char *src, size_t max_chars);
 int read_entire_file(const char *path, void *buf, size_t cap, size_t *out_len);
 int write_entire_file(const char *path, const void *buf, size_t len);
+int str_contains_ci(const char *haystack, const char *needle);
+void str_tolower_copy(char *out, size_t out_len, const char *src);

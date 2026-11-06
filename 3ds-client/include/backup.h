@@ -14,7 +14,18 @@ typedef struct LocalBackup {
     char container_sha[65];
 } LocalBackup;
 
+typedef struct BackupCatalogItem {
+    u64 title_id;
+    char name[96];
+    char path[384];
+    char label[48];
+    u64 bytes;
+} BackupCatalogItem;
+
+#define MAX_CATALOG_BACKUPS 32
+
 int backup_create(const TitleEntry *title, char *out_path, size_t out_len, char content_sha[65], char container_sha[65], char *err, size_t err_len, ProgressFn progress);
 int backup_list(u64 title_id, LocalBackup *items, int max_items);
+int backup_catalog(BackupCatalogItem *items, int max_items, const TitleList *titles);
 int backup_restore(const TitleEntry *title, const char *container_path, char *err, size_t err_len, ProgressFn progress);
 int backup_stage_hash(const TitleEntry *title, char *staged_dir, size_t staged_len, char content_sha[65], char container_sha[65], SaveSnapshot *snap, char *err, size_t err_len, ProgressFn progress);
