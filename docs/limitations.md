@@ -3,7 +3,7 @@
 These cases are reported in the client. They are not treated as successful syncs.
 
 - System titles, updates, DLC, and demos are listed only when "All titles" is enabled, and they cannot be backed up.
-- DSiWare and Nintendo DS `.sav` files on the SD card (`Nintendo DS/Save`) are supported alongside 3DS save archives.
+- DSiWare and Nintendo DS `.sav` files on the SD card (`Nintendo DS/Save`) are supported alongside 3DS save archives. DS saves are matched to installed titles by product code when possible, so icons and names follow the 3DS-style list.
 - A cartridge save that is not a filesystem (CARD1 / SPI) is not read or written.
 - Save archives that fail to open show the result code. On a 3DSX build this often means the launcher cannot open another title's save. Install `2DSync.cia`.
 - Empty save archives are not uploaded.

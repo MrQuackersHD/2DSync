@@ -33,7 +33,7 @@ typedef struct TitleList {
 } TitleList;
 
 void titles_free_icons(TitleList *list);
-int titles_scan(TitleList *list, void (*progress)(const char *, int));
+int titles_scan(TitleList *list, int include_unsupported, void (*progress)(const char *, int));
 void titles_load_icon(TitleEntry *title);
 const char *media_label(FS_MediaType media);
 int title_entry_visible(const TitleEntry *entry, int show_unsupported);

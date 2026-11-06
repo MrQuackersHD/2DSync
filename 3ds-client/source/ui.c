@@ -105,6 +105,9 @@ static int visible_count(const AppState *app) {
 static const char *title_kind_label(const TitleEntry *title) {
     if (title->kind == TITLE_SUPPORTED_DS_SAVE) return "DS save";
     if (title->kind == TITLE_SUPPORTED_DSIWARE) return "DSiWare";
+    if (title->kind == TITLE_SUPPORTED_GAME && title->media == MEDIATYPE_GAME_CARD) return "Cartridge";
+    if (title->kind == TITLE_SUPPORTED_GAME && title->media == MEDIATYPE_NAND) return "Installed";
+    if (title->kind == TITLE_SUPPORTED_GAME) return "Digital";
     return media_label(title->media);
 }
 
@@ -128,7 +131,7 @@ static void draw_top(AppState *app) {
     C2D_DrawRectSolid(0, 0, 0, 400, 34, COL_PANEL2);
     C2D_DrawRectSolid(0, 34, 0, 400, 2, COL_ACCENT);
     text(app, 16, 6, 0.58f, COL_TEXT, "2DSync");
-    text(app, 122, 10, 0.36f, COL_ACCENT, "v0.1.4");
+    text(app, 122, 10, 0.36f, COL_ACCENT, "v0.1.5");
     const char *status = app->online ? "Online" : "Offline";
     badge(app->online ? 318 : 312, 9, app->online ? 66 : 72, app->online ? COL_OK : COL_WARN, app, status);
 
@@ -213,12 +216,14 @@ static void draw_games(AppState *app) {
         TitleEntry *title = &app->titles.items[index];
         float y = row_y(slot);
         row(y, app->cursor == vis);
+        titles_load_icon(title);
         draw_icon(title, 20, y + 6, 0.46f);
         char name[64];
-        trim_copy(name, sizeof(name), title->name, 20);
-        text(app, 50, y + 2, 0.44f, COL_TEXT, name);
+        trim_copy(name, sizeof(name), title->name, 22);
+        text(app, 50, y + 2, 0.46f, COL_TEXT, name);
         char meta[80];
-        snprintf(meta, sizeof(meta), "%s", title_kind_label(title));
+        if (title->product[0]) snprintf(meta, sizeof(meta), "%s   %s", title->product, title_kind_label(title));
+        else snprintf(meta, sizeof(meta), "%s", title_kind_label(title));
         text(app, 50, y + 17, 0.34f, title_class_supported(title->kind) ? COL_MUTED : COL_WARN, meta);
         text(app, 220, y + 9, 0.34f, title->has_save ? COL_OK : COL_WARN, title->has_save ? "Save" : "No save");
     }

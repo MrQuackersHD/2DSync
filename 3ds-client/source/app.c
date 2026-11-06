@@ -545,7 +545,7 @@ static void open_game(AppState *app) {
 
 static void scan_titles(AppState *app) {
     app->busy = 1;
-    titles_scan(&app->titles, progress_cb);
+    titles_scan(&app->titles, app->show_unsupported, progress_cb);
     app->busy = 0;
     app->scanned = 1;
     app->title_index = visible_index(app, 0);
@@ -768,6 +768,8 @@ int app_frame(AppState *app) {
         app->show_unsupported = !app->show_unsupported;
         app->cursor = 0;
         app->scroll = 0;
+        scan_titles(app);
+        toast(app, app->show_unsupported ? "Showing all titles" : "Supported games only");
     }
     if ((app->screen == SCREEN_GAMES || app->screen == SCREEN_CLOUD || app->screen == SCREEN_HISTORY) && (down & KEY_Y)) prompt_search(app);
     if ((app->screen == SCREEN_GAMES || app->screen == SCREEN_CLOUD || app->screen == SCREEN_HISTORY) && (down & KEY_L) && app->search_query[0]) {

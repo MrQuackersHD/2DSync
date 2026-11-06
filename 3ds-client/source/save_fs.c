@@ -178,11 +178,11 @@ int save_export_to(const TitleEntry *title, const char *dir, SaveSnapshot *snap,
         set_err(err, err_len, title_class_reason(title->kind));
         return -1;
     }
-    if (title->kind == TITLE_SUPPORTED_DS_SAVE) {
-        if (!title->ds_save_path[0]) {
-            set_err(err, err_len, "DS save path is missing");
-            return -1;
-        }
+    if (title->ds_save_path[0]) {
+        FS_Archive archive = 0;
+        int archive_ok = R_SUCCEEDED(open_user_save(&archive, title));
+        if (archive_ok) FSUSER_CloseArchive(archive);
+        if (title->kind == TITLE_SUPPORTED_DS_SAVE || !archive_ok) {
         struct stat st;
         if (stat(title->ds_save_path, &st) != 0 || st.st_size <= 0) {
             set_err(err, err_len, "DS save file is missing");
@@ -225,6 +225,7 @@ int save_export_to(const TitleEntry *title, const char *dir, SaveSnapshot *snap,
         snap->file_count = 1;
         if (progress) progress("Copying DS save", 100);
         return 0;
+        }
     }
     mkdir_p(dir);
     char save_dir[512], ext_dir[512];
@@ -419,11 +420,7 @@ int save_import_from(const TitleEntry *title, const char *dir, const SaveSnapsho
         set_err(err, err_len, title_class_reason(title->kind));
         return -1;
     }
-    if (title->kind == TITLE_SUPPORTED_DS_SAVE) {
-        if (!title->ds_save_path[0]) {
-            set_err(err, err_len, "DS save path is missing");
-            return -1;
-        }
+    if (title->ds_save_path[0]) {
         char root[512];
         snprintf(root, sizeof(root), "%s/savedata", dir);
         struct stat st;

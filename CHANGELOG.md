@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+- Stop filling the game list with hundreds of NAND system titles; supported games stay visible by default.
+- Link Nintendo DS `.sav` files to installed titles by product code so names and icons match 3DS-style rows.
+- Load DSiWare icons from more NCCH partitions, with a placeholder tile when needed.
+- Show product code plus media type instead of a bare "NAND" label; rescan when toggling all titles.
+
 ## 0.1.4
 
 - Improved on-screen text contrast and larger labels on the bottom screen.

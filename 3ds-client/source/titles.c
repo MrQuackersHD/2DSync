@@ -35,19 +35,33 @@ static Result open_extdata(FS_Archive *archive, u64 ext_id) {
     return FSUSER_OpenArchive(archive, ARCHIVE_EXTDATA, path);
 }
 
-static Result open_icon(Handle *out, u64 title_id, FS_MediaType media, int media_offset) {
+static Result open_icon_at(Handle *out, u64 title_id, FS_MediaType media, u32 ncch_part, int media_offset) {
     u8 arch[0x10];
     u8 file[0x14];
     memset(arch, 0, sizeof(arch));
     memset(file, 0, sizeof(file));
     memcpy(arch, &title_id, 8);
     arch[media_offset] = (u8)media;
-    u32 ncch = 2;
-    memcpy(file + 8, &ncch, 4);
+    memcpy(file + 8, &ncch_part, 4);
     memcpy(file + 12, "icon", 4);
     FS_Path ap = {PATH_BINARY, sizeof(arch), arch};
     FS_Path fp = {PATH_BINARY, sizeof(file), file};
     return FSUSER_OpenFileDirectly(out, ARCHIVE_SAVEDATA_AND_CONTENT, ap, fp, FS_OPEN_READ, 0);
+}
+
+static Result open_icon(Handle *out, u64 title_id, FS_MediaType media, int media_offset) {
+    return open_icon_at(out, title_id, media, 2, media_offset);
+}
+
+static Result open_icon_any(Handle *out, u64 title_id, FS_MediaType media) {
+    static const u32 parts[] = {0, 1, 2};
+    for (size_t pi = 0; pi < sizeof(parts) / sizeof(parts[0]); pi++) {
+        for (int media_offset = 8; media_offset <= 9; media_offset++) {
+            Result rc = open_icon_at(out, title_id, media, parts[pi], media_offset);
+            if (R_SUCCEEDED(rc)) return rc;
+        }
+    }
+    return -1;
 }
 
 static void name_from_smdh(char *out, size_t out_len, const u8 *smdh, u8 language) {
@@ -70,12 +84,50 @@ static void name_from_smdh(char *out, size_t out_len, const u8 *smdh, u8 languag
 
 static void install_icon(TitleEntry *title, const u8 *smdh);
 
+static void install_placeholder_icon(TitleEntry *title, u16 inner, u16 outer) {
+    if (title->icon_ready) return;
+    if (!C3D_TexInit(&title->tex, 64, 64, GPU_RGB565)) return;
+    uint16_t *px = (uint16_t *)title->tex.data;
+    for (int ty = 0; ty < 8; ty++) {
+        for (int tx = 0; tx < 8; tx++) {
+            uint16_t *tile = px + (ty * 8 + tx) * 64;
+            int edge = (tx == 0 || ty == 0 || tx == 7 || ty == 7);
+            for (int i = 0; i < 64; i++) tile[i] = edge ? outer : inner;
+        }
+    }
+    C3D_TexFlush(&title->tex);
+    C3D_TexSetFilter(&title->tex, GPU_NEAREST, GPU_NEAREST);
+    C3D_TexSetWrap(&title->tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    title->sub.width = 48;
+    title->sub.height = 48;
+    title->sub.left = 0.0f;
+    title->sub.right = 48.0f / 64.0f;
+    title->sub.top = 1.0f;
+    title->sub.bottom = 1.0f - (48.0f / 64.0f);
+    title->icon_ready = 1;
+}
+
+static void polish_title_name(TitleEntry *title) {
+    if (title->name[0] && strcmp(title->name, "Unknown title") != 0 && strncmp(title->name, "Title ", 6) != 0) return;
+    if (!title->product[0]) return;
+    if (title->kind == TITLE_SUPPORTED_DSIWARE) {
+        snprintf(title->name, sizeof(title->name), "DSiWare %s", title->product);
+    } else if (title->kind == TITLE_SUPPORTED_DS_SAVE) {
+        return;
+    } else {
+        snprintf(title->name, sizeof(title->name), "Game %s", title->product);
+    }
+}
+
 static void read_meta(TitleEntry *title, u8 language) {
     Handle file = 0;
-    Result rc = open_icon(&file, title->title_id, title->media, 8);
-    if (R_FAILED(rc)) rc = open_icon(&file, title->title_id, title->media, 9);
+    Result rc = open_icon_any(&file, title->title_id, title->media);
     if (R_FAILED(rc)) {
-        snprintf(title->name, sizeof(title->name), "Title %016llX", (unsigned long long)title->title_id);
+        polish_title_name(title);
+        if (!title->name[0]) snprintf(title->name, sizeof(title->name), "Title %016llX", (unsigned long long)title->title_id);
+        if (title->kind == TITLE_SUPPORTED_DSIWARE || title->kind == TITLE_SUPPORTED_DS_SAVE) {
+            install_placeholder_icon(title, 0x34A4, 0x2244);
+        }
         return;
     }
     u8 *smdh = malloc(0x36C0);
@@ -93,7 +145,9 @@ static void read_meta(TitleEntry *title, u8 language) {
         return;
     }
     name_from_smdh(title->name, sizeof(title->name), smdh, language);
+    polish_title_name(title);
     if (read >= 0x36C0) install_icon(title, smdh);
+    else if (title->kind == TITLE_SUPPORTED_DSIWARE) install_placeholder_icon(title, 0x34A4, 0x2244);
     free(smdh);
 }
 
@@ -116,9 +170,13 @@ static void install_icon(TitleEntry *title, const u8 *smdh) {
 void titles_load_icon(TitleEntry *title) {
     if (title->icon_ready) return;
     Handle file = 0;
-    Result rc = open_icon(&file, title->title_id, title->media, 8);
-    if (R_FAILED(rc)) rc = open_icon(&file, title->title_id, title->media, 9);
-    if (R_FAILED(rc)) return;
+    Result rc = open_icon_any(&file, title->title_id, title->media);
+    if (R_FAILED(rc)) {
+        if (title->kind == TITLE_SUPPORTED_DSIWARE || title->kind == TITLE_SUPPORTED_DS_SAVE) {
+            install_placeholder_icon(title, 0x34A4, 0x2244);
+        }
+        return;
+    }
     u8 *smdh = malloc(0x36C0);
     if (!smdh) {
         FSFILE_Close(file);
@@ -184,7 +242,7 @@ void titles_free_icons(TitleList *list) {
     }
 }
 
-static int add_media(TitleList *list, FS_MediaType media, u8 language, void (*progress)(const char *, int)) {
+static int add_media(TitleList *list, FS_MediaType media, u8 language, int include_unsupported, void (*progress)(const char *, int)) {
     u32 count = 0;
     Result rc = AM_GetTitleCount(media, &count);
     if (R_FAILED(rc) || count == 0) return 0;
@@ -217,6 +275,7 @@ static int add_media(TitleList *list, FS_MediaType media, u8 language, void (*pr
         title->media = media;
         title->version = infos[i].version;
         title->kind = classify_title(ids[i], (int)media);
+        if (!include_unsupported && !title_class_supported(title->kind)) continue;
         AM_GetTitleProductCode(media, ids[i], title->product);
         title->product[16] = 0;
         read_meta(title, language);
@@ -237,22 +296,22 @@ static int add_media(TitleList *list, FS_MediaType media, u8 language, void (*pr
 
 static void scan_ds_saves(TitleList *list, void (*progress)(const char *, int));
 
-int titles_scan(TitleList *list, void (*progress)(const char *, int)) {
+int titles_scan(TitleList *list, int include_unsupported, void (*progress)(const char *, int)) {
     titles_free_icons(list);
     memset(list, 0, sizeof(*list));
     u8 language = CFG_LANGUAGE_EN;
     CFGU_GetSystemLanguage(&language);
     if (progress) progress("Scanning SD titles", 0);
-    if (add_media(list, MEDIATYPE_SD, language, progress) != 0) return -1;
-    if (progress) progress("Scanning DSiWare", 35);
-    if (add_media(list, MEDIATYPE_NAND, language, progress) != 0) return -1;
-    if (progress) progress("Scanning DS saves", 45);
-    scan_ds_saves(list, progress);
+    if (add_media(list, MEDIATYPE_SD, language, include_unsupported, progress) != 0) return -1;
     bool inserted = false;
     if (R_SUCCEEDED(FSUSER_CardSlotIsInserted(&inserted)) && inserted) {
-        if (progress) progress("Scanning cartridge", 50);
-        if (add_media(list, MEDIATYPE_GAME_CARD, language, progress) != 0) return -1;
+        if (progress) progress("Scanning cartridge", 30);
+        if (add_media(list, MEDIATYPE_GAME_CARD, language, include_unsupported, progress) != 0) return -1;
     }
+    if (progress) progress("Scanning DS saves", 45);
+    scan_ds_saves(list, progress);
+    if (progress) progress("Scanning DSiWare", 60);
+    if (add_media(list, MEDIATYPE_NAND, language, include_unsupported, progress) != 0) return -1;
     if (progress) progress("Scan complete", 100);
     titles_cache_names(list);
     return 0;
@@ -376,6 +435,52 @@ static int ds_save_exists(const TitleList *list, u64 title_id) {
     return 0;
 }
 
+static int title_index_by_product(const TitleList *list, const char *code) {
+    if (!code || !code[0]) return -1;
+    for (int i = 0; i < list->count; i++) {
+        if (strncasecmp(list->items[i].product, code, 4) == 0) return i;
+    }
+    return -1;
+}
+
+static int extract_product_code(const char *filename, char code[5]) {
+    if (!filename) return 0;
+    size_t len = strlen(filename);
+    if (len < 5) return 0;
+    const char *dot = strrchr(filename, '.');
+    if (!dot || strcasecmp(dot, ".sav") != 0) return 0;
+    const char *dash = strrchr(filename, '-');
+    if (dash && dash + 1 < dot) {
+        const char *p = dash + 1;
+        while (*p == ' ') p++;
+        if ((size_t)(dot - p) >= 4) {
+            memcpy(code, p, 4);
+            code[4] = 0;
+            for (int i = 0; i < 4; i++) {
+                char c = code[i];
+                if (c == ' ' || c == '.') {
+                    code[i] = 0;
+                    break;
+                }
+            }
+            return code[0] != 0;
+        }
+    }
+    if (len >= 8 && strcasecmp(dot - 4, ".sav") == 0) {
+        memcpy(code, dot - 4, 4);
+        code[4] = 0;
+        return 1;
+    }
+    return 0;
+}
+
+static void attach_ds_save(TitleList *list, int index, const char *dirpath, const char *filename) {
+    TitleEntry *title = &list->items[index];
+    snprintf(title->ds_save_path, sizeof(title->ds_save_path), "%s/%s", dirpath, filename);
+    title->has_save = 1;
+    snprintf(title->note, sizeof(title->note), "DS save on SD card");
+}
+
 static void scan_ds_save_dir(TitleList *list, const char *dirpath, void (*progress)(const char *, int)) {
     DIR *dir = opendir(dirpath);
     if (!dir) return;
@@ -383,7 +488,16 @@ static void scan_ds_save_dir(TitleList *list, const char *dirpath, void (*progre
     while ((de = readdir(dir)) != NULL && list->count < MAX_TITLES) {
         size_t len = strlen(de->d_name);
         if (len < 5) continue;
-        if (strcasecmp(de->d_name + len - 4, ".sav") != 0) continue;
+        if (strcasecmp(de->d_name + len - 4, ".sav") != 0 && strcasecmp(de->d_name + len - 4, ".SAV") != 0) continue;
+        char code[5];
+        if (extract_product_code(de->d_name, code)) {
+            int existing = title_index_by_product(list, code);
+            if (existing >= 0) {
+                attach_ds_save(list, existing, dirpath, de->d_name);
+                if (progress) progress("Linked DS save", -1);
+                continue;
+            }
+        }
         u64 tid = title_id_for_ds_save(de->d_name);
         if (ds_save_exists(list, tid)) continue;
         TitleEntry *title = &list->items[list->count];
@@ -393,7 +507,9 @@ static void scan_ds_save_dir(TitleList *list, const char *dirpath, void (*progre
         title->kind = TITLE_SUPPORTED_DS_SAVE;
         snprintf(title->ds_save_path, sizeof(title->ds_save_path), "%s/%s", dirpath, de->d_name);
         name_from_ds_filename(title->name, sizeof(title->name), de->d_name);
-        snprintf(title->product, sizeof(title->product), "DS");
+        if (extract_product_code(de->d_name, code)) snprintf(title->product, sizeof(title->product), "%s", code);
+        else snprintf(title->product, sizeof(title->product), "DS");
+        install_placeholder_icon(title, 0x528A, 0x2A44);
         probe_save(title);
         list->supported_count++;
         list->count++;
@@ -405,4 +521,5 @@ static void scan_ds_save_dir(TitleList *list, const char *dirpath, void (*progre
 static void scan_ds_saves(TitleList *list, void (*progress)(const char *, int)) {
     scan_ds_save_dir(list, "sdmc:/Nintendo DS/Save", progress);
     scan_ds_save_dir(list, "sdmc:/Nintendo DS/Save data", progress);
+    scan_ds_save_dir(list, "sdmc:/Nintendo DS/Savedata", progress);
 }
