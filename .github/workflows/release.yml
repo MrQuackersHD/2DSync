@@ -26,7 +26,7 @@ jobs:
           install -m 755 /tmp/bannertool/output/linux-x86_64/bannertool /usr/local/bin/bannertool
           git clone --depth 1 https://github.com/3DSGuy/Project_CTR.git /tmp/project_ctr
           make -C /tmp/project_ctr/makerom -j"$(nproc)"
-          install -m 755 /tmp/project_ctr/makerom/makerom /usr/local/bin/makerom
+          install -m 755 /tmp/project_ctr/makerom/bin/makerom /usr/local/bin/makerom
       - name: Build
         run: make -C 3ds-client
       - name: Verify release binaries
