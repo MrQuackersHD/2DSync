@@ -21,7 +21,7 @@ jobs:
       - name: Install CIA packaging tools
         run: |
           set -eux
-          git clone --depth 1 https://github.com/diasurgical/bannertool.git /tmp/bannertool
+          git clone --depth 1 --recursive https://github.com/diasurgical/bannertool.git /tmp/bannertool
           make -C /tmp/bannertool -j"$(nproc)"
           install -m 755 /tmp/bannertool/bannertool /usr/local/bin/bannertool
           git clone --depth 1 https://github.com/3DSGuy/Project_CTR.git /tmp/project_ctr
