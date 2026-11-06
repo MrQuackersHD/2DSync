@@ -487,13 +487,13 @@ static void do_restore_selected(AppState *app) {
         int idx = app_scrolling_index(app, app->cursor);
         if (idx < 0 || idx >= app->catalog_count) return;
         BackupCatalogItem *item = &app->catalog[idx];
-        int idx = titles_find_index(&app->titles, item->title_id);
-        if (idx < 0) {
+        int title_idx = titles_find_index(&app->titles, item->title_id);
+        if (title_idx < 0) {
             toast(app, "Rescan games, then try again");
             return;
         }
-        app->title_index = idx;
-        title = &app->titles.items[idx];
+        app->title_index = title_idx;
+        title = &app->titles.items[title_idx];
         path = item->path;
     } else {
         if (require_supported(app, &title) != 0) return;
