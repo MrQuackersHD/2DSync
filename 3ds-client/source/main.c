@@ -15,7 +15,6 @@ static void services_exit(int gpu) {
     }
     httpcExit();
     amExit();
-    archiveUnmountAll();
     acExit();
     cfguExit();
     romfsExit();
@@ -31,10 +30,6 @@ int main(void) {
     romfsInit();
     cfguInit();
     acInit();
-    if (R_FAILED(archiveMountSdmc())) {
-        services_exit(0);
-        return 1;
-    }
     amInit();
     httpcInit(0x10000);
     if (!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE)) {

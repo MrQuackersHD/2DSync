@@ -132,7 +132,7 @@ static void draw_top(AppState *app) {
     C2D_DrawRectSolid(0, 0, 0, 400, 34, COL_PANEL2);
     C2D_DrawRectSolid(0, 34, 0, 400, 2, COL_ACCENT);
     text(app, 16, 6, 0.58f, COL_TEXT, "2DSync");
-    text(app, 122, 10, 0.36f, COL_ACCENT, "v0.1.6");
+    text(app, 122, 10, 0.36f, COL_ACCENT, "v0.1.7");
     const char *status = app->online ? "Online" : "Offline";
     badge(app->online ? 318 : 312, 9, app->online ? 66 : 72, app->online ? COL_OK : COL_WARN, app, status);
 

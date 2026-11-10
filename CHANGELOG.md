@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7
+
+- Fix instant return to the HOME Menu on launch: libctru already mounts the SD card in `__appInit`, so a second `archiveMountSdmc()` call failed and the app exited before drawing.
+
 ## 0.1.6
 
 - Mount the SD card (`archiveMountSdmc`) so DS save discovery and config I/O work on hardware.
