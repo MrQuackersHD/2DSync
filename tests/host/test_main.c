@@ -44,6 +44,7 @@ static void test_titles(void) {
     expect(classify_title(0x0004008C00123400ULL, TITLE_MEDIA_SD) == TITLE_UNSUPPORTED_DLC, "dlc");
     expect(classify_title(0x0004001000021300ULL, TITLE_MEDIA_NAND) == TITLE_UNSUPPORTED_SYSTEM, "system");
     expect(classify_title(0x000300044B344445ULL, TITLE_MEDIA_NAND) == TITLE_SUPPORTED_DSIWARE, "dsiware");
+    expect(classify_title(0x0004800400123400ULL, TITLE_MEDIA_GAME_CARD) == TITLE_SUPPORTED_DS_CARD, "ds card twl");
     expect(classify_title(0x0004800100ABCDEFULL, TITLE_MEDIA_SD) == TITLE_SUPPORTED_DS_SAVE, "ds save id");
     expect(!title_class_supported(TITLE_UNSUPPORTED_DEMO), "demo not supported");
 }

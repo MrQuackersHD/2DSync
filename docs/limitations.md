@@ -3,7 +3,8 @@
 These cases are reported in the client. They are not treated as successful syncs.
 
 - System titles, updates, DLC, and demos are listed only when "All titles" is enabled, and they cannot be backed up.
-- DSiWare and Nintendo DS `.sav` files on the SD card (`Nintendo DS/Save`) are supported alongside 3DS save archives. DS saves are matched to installed titles by product code when possible, so icons and names follow the 3DS-style list.
+- DSiWare and Nintendo DS `.sav` files on the SD card are supported alongside 3DS save archives. The scanner looks under `Nintendo DS/Save`, each `Nintendo 3DS/<…>/Nintendo DS/Save*`, and common homebrew paths such as `3ds/Checkpoint/saves`. DS saves are matched to installed titles by product code when possible.
+- Insert a DS cartridge (or keep an SD `.sav` from Checkpoint or similar) and tap **Rescan Games** on the games list after installing an update. DS carts use product codes `TWL-` / `NTR-`.
 - A cartridge save that is not a filesystem (CARD1 / SPI) is not read or written.
 - Save archives that fail to open show the result code. On a 3DSX build this often means the launcher cannot open another title's save. Install `2DSync.cia`.
 - Empty save archives are not uploaded.
