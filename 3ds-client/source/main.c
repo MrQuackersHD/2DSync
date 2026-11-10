@@ -1,6 +1,5 @@
 #include "app.h"
 
-#include <3ds/sdmc.h>
 #include <string.h>
 
 /* libctru places this stack inside the heap. 32KB is the library default,
@@ -16,7 +15,7 @@ static void services_exit(int gpu) {
     }
     httpcExit();
     amExit();
-    sdmcExit();
+    archiveUnmountAll();
     acExit();
     cfguExit();
     romfsExit();
@@ -32,7 +31,7 @@ int main(void) {
     romfsInit();
     cfguInit();
     acInit();
-    if (R_FAILED(sdmcInit())) {
+    if (R_FAILED(archiveMountSdmc())) {
         services_exit(0);
         return 1;
     }

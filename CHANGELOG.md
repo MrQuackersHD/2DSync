@@ -2,7 +2,7 @@
 
 ## 0.1.6
 
-- Initialize SD card access (`sdmcInit`) so DS save discovery and config I/O work on hardware.
+- Mount the SD card (`archiveMountSdmc`) so DS save discovery and config I/O work on hardware.
 - Detect DS cartridges by `TWL-` / `NTR-` product codes, read legacy banners for names, and scan cartridge whenever the slot reports a cart or AM lists a game-card title.
 - Find SD `.sav` files under each `Nintendo 3DS/<…>/Nintendo DS/Save*`, Checkpoint, JKSM, and other common folders (deeper recursion).
 - Standalone DS saves from Checkpoint use the game folder name when the file is named `main` or `backup`.
