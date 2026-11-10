@@ -1,5 +1,6 @@
 #include "app.h"
 
+#include <3ds/sdmc.h>
 #include <string.h>
 
 /* libctru places this stack inside the heap. 32KB is the library default,
